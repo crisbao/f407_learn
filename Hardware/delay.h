@@ -1,0 +1,23 @@
+#ifndef __DELAY_H
+#define __DELAY_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include "main.h"
+
+/* ≥ı ºªØ DWT */
+void Delay_Init(void);
+
+/* Œ¢√Î—” ± */
+void Delay_us(uint32_t us);
+
+/* ∫¡√Î—” ± */
+void Delay_ms(uint32_t ms);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

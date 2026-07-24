@@ -1,0 +1,31 @@
+# Keil build output
+Objects/
+Listings/
+
+*.axf
+*.hex
+*.bin
+*.map
+*.lnp
+
+*.o
+*.d
+*.crf
+*.htm
+*.sct
+*.lst
+
+# Keil user settings
+*.uvguix.*
+*.uvoptx
+
+# Log files
+*.log
+
+# Backup files
+*.bak
+*.tmp
+
+# IDE
+.vscode/
+.idea/
