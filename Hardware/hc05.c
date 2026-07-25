@@ -1,4 +1,5 @@
 #include "hc05.h"
+#include "app_system.h"
 #include <string.h>
 
 
@@ -32,6 +33,8 @@ void HC05_Init(void)
 
     /* 启动串口中断接收 */
     HC05_StartReceive();
+	
+		APP_System_SetBTStatus(1);
 }
 
 /**
@@ -44,6 +47,10 @@ void HC05_StartReceive(void)
     ret = HAL_UART_Receive_IT(&huart3,
                               &HC05_RxByte,
                               1);
+		if(ret != HAL_OK)
+    {
+        USART_Printf(&huart1,"HC05 RX ERROR\r\n");
+    }
 
 }
 

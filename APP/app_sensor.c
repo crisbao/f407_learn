@@ -1,4 +1,5 @@
 #include "app_sensor.h"
+#include "app_system.h"
 #include <string.h>
 #include "usart.h"
 #include "usart_driver.h"
@@ -27,6 +28,11 @@ HAL_StatusTypeDef APP_Sensor_Update(void)
     HAL_StatusTypeDef ret;
 
     ret = DHT11_Read(&sensorData);
+		
+		/*
+     * 更新系统状态
+     */
+    APP_System_SetDHTStatus(ret);
 
     USART_Printf(&huart1,
                  "ret=%d Temp=%d.%d C Humi=%d.%d %%\r\n",

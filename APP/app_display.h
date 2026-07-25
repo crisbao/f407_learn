@@ -33,9 +33,10 @@ void APP_Display_Update(void);
 
 void APP_Display_SetPage(APP_DisplayPage_t page);
 
+void APP_Display_Clear(void);
+
 APP_DisplayPage_t APP_Display_GetPage(void);
 
-void APP_Protocol_Parse(const char *cmd);
 
 #ifdef __cplusplus
 }

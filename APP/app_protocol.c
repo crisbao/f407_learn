@@ -2,9 +2,14 @@
 #include "app_control.h"
 #include "app_sensor.h"
 #include "app_display.h"
+#include "app_config.h"
+#include "app_system.h"
 #include "hc05.h"
-#include "oled.h"
-#include "dht11.h"
+
+
+
+#include <string.h>
+#include <stdlib.h>
 
 #define APP_COMMAND_NUM \
 (sizeof(APP_CommandTable)/sizeof(APP_CommandTable[0]))
@@ -14,8 +19,13 @@ static char APP_CmdBuffer[APP_CMD_MAX_LEN];
 
 static uint16_t APP_CmdIndex;
 
+
 static void APP_Protocol_Input(uint8_t ch);
-static void APP_Cmd_Status(void);
+static void APP_Cmd_Status(char *param);
+static void APP_Cmd_LED(char *param);
+static void APP_Cmd_Page(char *param);
+static void APP_Cmd_SetInterval(char *param);
+static void APP_Cmd_OLED(char *param);
 /**
  * @brief 协议初始化
  */
@@ -38,31 +48,141 @@ void APP_Protocol_Process(void)
 }
 
 
-static void APP_Cmd_Test(void)
+static void APP_Cmd_Test(char *param)
 {
     HC05_Printf("OK\r\n");
 }
 
-static void APP_Cmd_OLED_Clear(void)
+static void APP_Cmd_OLED_Clear(char *param)
 {
-    OLED_Clear();
-		OLED_Refresh();
-
+    APP_Display_Clear();
     HC05_Printf("OK\r\n");
 }
 
-static void APP_Cmd_LED_ON(void)
+static void APP_Cmd_LED(char *param)
 {
-    APP_Control_LED(APP_LED_ON);
+    if(param == NULL)
+    {
+        HC05_Printf("ERR PARAM\r\n");
+        return;
+    }
 
-    HC05_Printf("OK\r\n");
+
+    if(strcmp(param,"ON")==0)
+    {
+        APP_Control_LED(APP_LED_ON);
+
+        HC05_Printf("LED ON OK\r\n");
+    }
+
+    else if(strcmp(param,"OFF")==0)
+    {
+        APP_Control_LED(APP_LED_OFF);
+
+        HC05_Printf("LED OFF OK\r\n");
+    }
+
+    else
+    {
+        HC05_Printf("ERR LED PARAM\r\n");
+    }
 }
 
-static void APP_Cmd_LED_OFF(void)
+static void APP_Cmd_OLED(char *param)
 {
-    APP_Control_LED(APP_LED_OFF);
 
-    HC05_Printf("OK\r\n");
+    if(param==NULL)
+    {
+        return;
+    }
+
+
+    if(strcmp(param,"CLEAR")==0)
+    {
+
+        APP_Display_Clear();
+
+        HC05_Printf(
+            "OLED CLEAR OK\r\n"
+        );
+
+    }
+
+}
+
+static void APP_Cmd_Page(char *param)
+{
+
+    if(param == NULL)
+    {
+        HC05_Printf("ERR PARAM\r\n");
+        return;
+    }
+
+
+    if(strcmp(param,"HOME")==0)
+    {
+        APP_Display_SetPage(DISPLAY_PAGE_HOME);
+    }
+
+    else if(strcmp(param,"SENSOR")==0)
+    {
+        APP_Display_SetPage(DISPLAY_PAGE_SENSOR);
+    }
+
+    else if(strcmp(param,"SYSTEM")==0)
+    {
+        APP_Display_SetPage(DISPLAY_PAGE_SYSTEM);
+    }
+
+    else if(strcmp(param,"DEBUG")==0)
+    {
+        APP_Display_SetPage(DISPLAY_PAGE_DEBUG);
+    }
+
+    else
+    {
+        HC05_Printf("ERR PAGE\r\n");
+        return;
+    }
+
+
+    HC05_Printf("PAGE %s OK\r\n",param);
+}
+
+static void APP_Cmd_SetInterval(char *param)
+{
+
+    uint32_t sec;
+
+
+    if(param == NULL)
+    {
+        HC05_Printf("ERR PARAM\r\n");
+        return;
+    }
+
+
+    sec = atoi(param);
+
+
+    if(sec == 0)
+    {
+        HC05_Printf("ERR VALUE\r\n");
+        return;
+    }
+
+
+    APP_Config_SetSensorInterval(
+        sec*1000
+    );
+
+
+    HC05_Printf(
+        "INTERVAL=%lus OK\r\n",
+        sec
+    );
+
 }
 
 static const char *APP_PageToString(APP_DisplayPage_t page)
@@ -86,7 +206,7 @@ static const char *APP_PageToString(APP_DisplayPage_t page)
     }
 }
 
-static void APP_Cmd_Status(void)
+static void APP_Cmd_Status(char *param)
 {
     const DHT11_Data_t *sensor;
 
@@ -94,6 +214,14 @@ static void APP_Cmd_Status(void)
 
     HC05_Printf("\r\n");
     HC05_Printf("------ STATUS ------\r\n");
+	
+		HC05_Printf("Uptime : %lus\r\n",APP_System_GetUptime());
+
+
+    HC05_Printf("DHT    : %s\r\n",APP_System_GetDHTStatus()== HAL_OK ?"OK":"ERR");
+
+
+    HC05_Printf("BT     : %s\r\n",APP_System_GetBTStatus()?"OK":"ERR");
 
     HC05_Printf("Temp : %d.%d C\r\n",
                 sensor->temperature,
@@ -109,6 +237,11 @@ static void APP_Cmd_Status(void)
 
     HC05_Printf("Page : %s\r\n",
             APP_PageToString(APP_Display_GetPage()));
+		
+		HC05_Printf("Interval : %lus\r\n",APP_Config_GetSensorInterval()/1000);
+
+
+    HC05_Printf("Mode   : BARE\r\n");
 
     HC05_Printf("--------------------\r\n");
 }
@@ -118,37 +251,62 @@ static void APP_Cmd_Status(void)
  */
 static const APP_Command_t APP_CommandTable[] =
 {
-    {"LED ON",  APP_Cmd_LED_ON},
-
-    {"LED OFF", APP_Cmd_LED_OFF},
+    {"LED",  APP_Cmd_LED},
+		
+		{"OLED",APP_Cmd_OLED},
 
     {"TEST",    APP_Cmd_Test},
 		
 		{"OLED CLR",APP_Cmd_OLED_Clear},
 		
 		{"STATUS", APP_Cmd_Status},
+
+    {"PAGE",APP_Cmd_Page},
+		
+		{"INTERVAL",APP_Cmd_SetInterval}
 };
 
 /**
  * @brief 解析一条完整命令
  * @param cmd 命令字符串
  */
-static void APP_Protocol_Parse(const char *cmd)
+static void APP_Protocol_Parse(char *cmd)
 {
     uint16_t i;
 
-    for(i = 0; i < APP_COMMAND_NUM; i++)
+    char *param = NULL;
+
+
+    /* 查找第一个空格 */
+    param = strchr(cmd,' ');
+
+
+    if(param != NULL)
     {
-        if(strcmp(cmd, APP_CommandTable[i].cmd) == 0)
+        *param = '\0';
+
+        param++;
+    }
+
+
+    for(i=0;i<APP_COMMAND_NUM;i++)
+    {
+
+        if(strcmp(cmd,
+                  APP_CommandTable[i].cmd)==0)
         {
-            APP_CommandTable[i].handler();
+
+            APP_CommandTable[i].handler(param);
 
             return;
         }
+
     }
 
-    /* 未找到命令 */
-    HC05_Printf("ERROR: Unknown Command\r\n");
+    HC05_Printf(
+        "ERROR: Unknown Command\r\n"
+    );
+
 }
 
 /**
@@ -188,4 +346,6 @@ static void APP_Protocol_Input(uint8_t ch)
         HC05_Printf("ERROR: Command Too Long\r\n");
     }
 }
+
+
 

@@ -11,7 +11,7 @@ typedef struct
 {
     const char *cmd;
 
-    void (*handler)(void);
+    void (*handler)(char *param);
 
 }APP_Command_t;
 

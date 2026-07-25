@@ -7,6 +7,8 @@
 #include "app_display.h"
 #include "app_control.h"
 #include "app_protocol.h"
+#include "app_config.h"
+#include "app_system.h"
 
 
 /*----------------------------------------------------------
@@ -15,6 +17,10 @@
 void APP_Init(void)
 {
     /* 初始化应用模块 */
+	
+		APP_System_Init();
+
+		APP_Config_Init();
     
     APP_Sensor_Init();
 
@@ -31,17 +37,25 @@ void APP_Init(void)
  *---------------------------------------------------------*/
 void APP_Run(void)
 {
-    static uint32_t lastTick = 0;
+    static uint32_t sensorTick = 0;
 
-    if(HAL_GetTick() - lastTick >= 1000)
+
+    if(HAL_GetTick()-sensorTick >= 
+       APP_Config_GetSensorInterval())
     {
-        lastTick = HAL_GetTick();
+
+        sensorTick = HAL_GetTick();
+
 
         APP_Sensor_Update();
+
     }
+
 
     APP_Protocol_Process();
 
+
     APP_Display_Update();
+
 }
 

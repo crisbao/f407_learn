@@ -340,7 +340,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,STM32F407xx</Define>
               <Undefine></Undefine>
-              <IncludePath>../Core/Inc;../Drivers/STM32F4xx_HAL_Driver/Inc;../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32F4xx/Include;../Drivers/CMSIS/Include;../Hardare;..\APP</IncludePath>
+              <IncludePath>../Core/Inc;../Drivers/STM32F4xx_HAL_Driver/Inc;../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32F4xx/Include;../Drivers/CMSIS/Include;..\APP;..\Hardware</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -678,44 +678,44 @@
           <GroupName>Hardware</GroupName>
           <Files>
             <File>
-              <FileName>led.c</FileName>
+              <FileName>delay.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\Hardare\led.c</FilePath>
-            </File>
-            <File>
-              <FileName>oled.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Hardare\oled.c</FilePath>
-            </File>
-            <File>
-              <FileName>retarget.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Hardare\retarget.c</FilePath>
-            </File>
-            <File>
-              <FileName>usart_driver.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Hardare\usart_driver.c</FilePath>
-            </File>
-            <File>
-              <FileName>oledfont.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Hardare\oledfont.c</FilePath>
+              <FilePath>..\Hardware\delay.c</FilePath>
             </File>
             <File>
               <FileName>dht11.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\Hardare\dht11.c</FilePath>
-            </File>
-            <File>
-              <FileName>delay.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Hardare\delay.c</FilePath>
+              <FilePath>..\Hardware\dht11.c</FilePath>
             </File>
             <File>
               <FileName>hc05.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\Hardare\hc05.c</FilePath>
+              <FilePath>..\Hardware\hc05.c</FilePath>
+            </File>
+            <File>
+              <FileName>led.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Hardware\led.c</FilePath>
+            </File>
+            <File>
+              <FileName>oled.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Hardware\oled.c</FilePath>
+            </File>
+            <File>
+              <FileName>oledfont.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Hardware\oledfont.c</FilePath>
+            </File>
+            <File>
+              <FileName>retarget.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Hardware\retarget.c</FilePath>
+            </File>
+            <File>
+              <FileName>usart_driver.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Hardware\usart_driver.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -738,11 +738,6 @@
               <FilePath>..\APP\app_display.c</FilePath>
             </File>
             <File>
-              <FileName>app_display.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\APP\app_display.h</FilePath>
-            </File>
-            <File>
               <FileName>app.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\APP\app.c</FilePath>
@@ -753,9 +748,19 @@
               <FilePath>..\APP\app_protocol.c</FilePath>
             </File>
             <File>
-              <FileName>app_protocol.h</FileName>
+              <FileName>app_config.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\APP\app_config.c</FilePath>
+            </File>
+            <File>
+              <FileName>app_system.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\APP\app_system.c</FilePath>
+            </File>
+            <File>
+              <FileName>app_system.h</FileName>
               <FileType>5</FileType>
-              <FilePath>..\APP\app_protocol.h</FilePath>
+              <FilePath>..\APP\app_system.h</FilePath>
             </File>
           </Files>
         </Group>

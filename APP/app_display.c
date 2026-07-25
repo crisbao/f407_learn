@@ -4,9 +4,7 @@
 #include "app_control.h"
 
 #include "oled.h"
-#include "hc05.h"
 
-#include <string.h>
 
 static DHT11_Data_t lastSensor;
 
@@ -17,6 +15,7 @@ static uint8_t firstRefresh = 1;
 
 static APP_DisplayPage_t currentPage = DISPLAY_PAGE_HOME;
 
+static APP_DisplayPage_t lastPage = DISPLAY_PAGE_HOME;
 
 /**
  * @brief OLED初始化
@@ -26,6 +25,9 @@ void APP_Display_Init(void)
     OLED_Init();
 
     OLED_Clear();
+
+    firstRefresh = 1;
+    currentPage = DISPLAY_PAGE_HOME;
 
     OLED_ShowString(0, 0, " Smart Home");
 
@@ -47,6 +49,11 @@ static uint8_t APP_Display_IsChanged(void)
 
     /* 第一次一定刷新 */
     if(firstRefresh)
+    {
+        return 1;
+    }
+
+    if(currentPage != lastPage)
     {
         return 1;
     }
@@ -81,6 +88,8 @@ static void APP_Display_SaveState(void)
     lastSensor = *sensor;
 
     lastLedState = APP_Control_GetLEDState();
+
+    lastPage = currentPage;
 
     firstRefresh = 0;
 }
@@ -226,25 +235,18 @@ void APP_Display_SetPage(APP_DisplayPage_t page)
     currentPage = page;
 }
 
+void APP_Display_Clear(void)
+{
+    OLED_Clear();
+
+    OLED_Refresh();
+}
+
 APP_DisplayPage_t APP_Display_GetPage(void)
 {
     return currentPage;
 }
 
-void APP_Protocol_Parse(const char *cmd)
-{
-    if(strcmp(cmd,"LED ON")==0)
-    {
-        APP_Control_LED(APP_LED_ON);
 
-        HC05_Printf("OK\r\n");
-    }
-    else if(strcmp(cmd,"LED OFF")==0)
-    {
-        APP_Control_LED(APP_LED_OFF);
-
-        HC05_Printf("OK\r\n");
-    }
-}
 
 
