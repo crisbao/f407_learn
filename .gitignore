@@ -11,6 +11,7 @@ Listings/
 *.o
 *.d
 *.crf
+*.dep
 *.htm
 *.sct
 *.lst
@@ -18,6 +19,12 @@ Listings/
 # Keil user settings
 *.uvguix.*
 *.uvoptx
+
+# Keil debug configuration
+*.dbgconf
+
+# Keil RTE generated files
+RTE/
 
 # Log files
 *.log
