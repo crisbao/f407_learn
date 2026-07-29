@@ -3,12 +3,10 @@
 
 static uint32_t systemStartTick;
 
-
 static HAL_StatusTypeDef dhtStatus;
 
-
 static uint8_t btStatus;
-
+static APP_ConfigStatus_t configStatus;
 
 
 void APP_System_Init(void)
@@ -21,6 +19,7 @@ void APP_System_Init(void)
 
 
     btStatus = 0;
+    configStatus = APP_CONFIG_ERROR_MAGIC;
 
 }
 
@@ -69,3 +68,15 @@ uint8_t APP_System_GetBTStatus(void)
     return btStatus;
 }
 
+void APP_System_SetConfigStatus(
+    APP_ConfigStatus_t status
+)
+{
+    configStatus = status;
+}
+
+
+APP_ConfigStatus_t APP_System_GetConfigStatus(void)
+{
+    return configStatus;
+}

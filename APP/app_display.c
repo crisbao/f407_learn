@@ -2,6 +2,8 @@
 
 #include "app_sensor.h"
 #include "app_control.h"
+#include "app_status.h"
+#include "app_system.h"
 
 #include "oled.h"
 
@@ -144,20 +146,29 @@ static void APP_Display_ShowSystemPage(void)
 {
 
     OLED_ShowString(0, 0, "System");
-
+    
     OLED_Printf(0,
                 16,
                 "LED : %s",
                 APP_Control_GetLEDState() == APP_LED_ON ?
                 "ON" : "OFF");
 
-    OLED_ShowString(0,
-                    32,
-                    "HC05: Connected");
+    OLED_Printf(0,
+                32,
+                "HC05: %s",
+                APP_System_GetBTStatus() ?
+                "OK" :"ERR");
+    
+    OLED_Printf(0,
+                48,
+                "CFG: %s",
+                APP_System_GetConfigStatus()
+                == APP_CONFIG_OK ?
+                "OK" :"ERR");
 
-    OLED_ShowString(0,
-                    48,
-                    "FreeRTOS: OFF");
+    //OLED_ShowString(0,
+    //                64,
+    //                "Mode: Bare");
 }
 
 static void APP_Display_ShowDebugPage(void)

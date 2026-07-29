@@ -56,5 +56,7 @@ uint8_t USART_IsBusy(UART_HandleTypeDef *huart);
  * @brief ·¢ËÍ»»ÐÐ
  */
 void USART_NewLine(UART_HandleTypeDef *huart);
+
+
 #endif
 															 

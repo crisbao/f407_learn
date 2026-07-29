@@ -5,6 +5,7 @@
 #include "app_config.h"
 #include "app_system.h"
 #include "hc05.h"
+#include "usart_driver.h"
 
 
 
@@ -152,9 +153,8 @@ static void APP_Cmd_Page(char *param)
 
 static void APP_Cmd_SetInterval(char *param)
 {
-
     uint32_t sec;
-
+    APP_ConfigStatus_t ret;
 
     if(param == NULL)
     {
@@ -162,9 +162,7 @@ static void APP_Cmd_SetInterval(char *param)
         return;
     }
 
-
     sec = atoi(param);
-
 
     if(sec == 0)
     {
@@ -172,17 +170,33 @@ static void APP_Cmd_SetInterval(char *param)
         return;
     }
 
+    APP_Config_SetSensorInterval(sec * 1000);
 
-    APP_Config_SetSensorInterval(
-        sec*1000
-    );
+    ret = APP_Config_Save();
 
+    if(ret == APP_CONFIG_OK)
+    {
+        HC05_Printf(
+            "INTERVAL=%lu s OK\r\n",
+            sec
+        );
 
-    HC05_Printf(
-        "INTERVAL=%lus OK\r\n",
-        sec
-    );
+        USART_Printf(
+            &huart1,
+            "Config Saved\r\n"
+            "Interval = %lu ms\r\n",
+            sec * 1000
+        );
+    }
+    else
+    {
+        HC05_Printf("Save Failed\r\n");
 
+        USART_Printf(
+            &huart1,
+            "Config Save Failed\r\n"
+        );
+    }
 }
 
 static const char *APP_PageToString(APP_DisplayPage_t page)
@@ -209,6 +223,8 @@ static const char *APP_PageToString(APP_DisplayPage_t page)
 static void APP_Cmd_Status(char *param)
 {
     const DHT11_Data_t *sensor;
+    APP_ConfigStatus_t cfg;
+    cfg = APP_System_GetConfigStatus();
 
     sensor = APP_Sensor_GetData();
 
@@ -222,6 +238,19 @@ static void APP_Cmd_Status(char *param)
 
 
     HC05_Printf("BT     : %s\r\n",APP_System_GetBTStatus()?"OK":"ERR");
+
+    if(cfg == APP_CONFIG_OK)
+    {
+        HC05_Printf(
+            "CONFIG:FLASH\r\n"
+        );
+    }
+    else
+    {
+        HC05_Printf(
+            "CONFIG:DEFAULT\r\n"
+        );
+    }
 
     HC05_Printf("Temp : %d.%d C\r\n",
                 sensor->temperature,

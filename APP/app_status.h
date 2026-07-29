@@ -1,0 +1,28 @@
+#ifndef __APP_STATUS_H
+#define __APP_STATUS_H
+
+
+typedef enum
+{
+
+    APP_CONFIG_OK = 0,
+
+    APP_CONFIG_ERROR_MAGIC,
+
+    APP_CONFIG_ERROR_VERSION,
+
+    APP_CONFIG_ERROR_LENGTH,
+
+    APP_CONFIG_ERROR_CRC,
+
+    APP_CONFIG_ERROR_VALUE,
+
+    APP_CONFIG_ERROR_FLASH_Erase,
+
+    APP_CONFIG_ERROR_FLASH_Write
+
+
+} APP_ConfigStatus_t;
+
+
+#endif

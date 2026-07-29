@@ -717,6 +717,11 @@
               <FileType>1</FileType>
               <FilePath>..\Hardware\usart_driver.c</FilePath>
             </File>
+            <File>
+              <FileName>flash.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Hardware\flash.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -758,9 +763,9 @@
               <FilePath>..\APP\app_system.c</FilePath>
             </File>
             <File>
-              <FileName>app_system.h</FileName>
+              <FileName>app_status.h</FileName>
               <FileType>5</FileType>
-              <FilePath>..\APP\app_system.h</FilePath>
+              <FilePath>..\APP\app_status.h</FilePath>
             </File>
           </Files>
         </Group>

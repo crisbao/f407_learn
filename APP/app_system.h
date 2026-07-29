@@ -4,6 +4,8 @@
 
 #include "stdint.h"
 #include "stm32f4xx_hal.h"
+#include "app_status.h"
+
 
 
 /*
@@ -35,5 +37,12 @@ void APP_System_SetBTStatus(uint8_t status);
 
 uint8_t APP_System_GetBTStatus(void);
 
+
+void APP_System_SetConfigStatus(
+    APP_ConfigStatus_t status
+);
+
+
+APP_ConfigStatus_t APP_System_GetConfigStatus(void);
 
 #endif

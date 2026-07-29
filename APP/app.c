@@ -54,8 +54,11 @@ void APP_Run(void)
 
     APP_Protocol_Process();
 
+    //APP_Config_Process();
 
     APP_Display_Update();
+
+    
 
 }
 
