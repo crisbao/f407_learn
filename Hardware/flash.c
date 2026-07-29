@@ -1,45 +1,67 @@
 #include "flash.h"
 #include <string.h>
 
+/**
+ * @brief 擦除指定Flash Sector
+ *
+ * @param sector
+ *        FLASH_SECTOR_7
+ *        FLASH_SECTOR_8
+ */
 
-FLASH_Status_t  FLASH_EraseConfigSector(void)
+FLASH_Status_t FLASH_EraseSector(uint32_t sector)
 {
 
     FLASH_EraseInitTypeDef erase;
 
-    uint32_t sectorError;
+    uint32_t error;
+
+    /*
+     * 安全检查
+     *
+     * STM32F407VET6
+     * 只允许配置区:
+     *
+     * Sector6
+     * Sector7
+     */
+    if((sector != FLASH_SECTOR_6) &&
+       (sector != FLASH_SECTOR_7))
+    {
+        return FLASH_ERROR;
+    }
 
     HAL_FLASH_Unlock();
 
     erase.TypeErase =
         FLASH_TYPEERASE_SECTORS;
 
-
     erase.Sector =
-        FLASH_CONFIG_SECTOR;
-
+        sector;
 
     erase.NbSectors =
         1;
 
-
     erase.VoltageRange =
         FLASH_VOLTAGE_RANGE_3;
 
+
     if(HAL_FLASHEx_Erase(
-        &erase,
-        &sectorError) != HAL_OK)
+            &erase,
+            &error)
+            != HAL_OK)
     {
+
         HAL_FLASH_Lock();
 
         return FLASH_ERROR;
     }
 
     HAL_FLASH_Lock();
+
     return FLASH_OK;
 
 }
-
 
 
 
@@ -48,6 +70,10 @@ FLASH_Status_t FLASH_Write(
         uint8_t *data,
         uint32_t length)
 {
+    if(address % 4 != 0)
+    {
+        return FLASH_ERROR;
+    }
 
     uint32_t data32;
 

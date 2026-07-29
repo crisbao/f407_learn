@@ -7,13 +7,23 @@
 #include <string.h>
 
 
+typedef struct
+{
+    uint32_t address;
+
+    uint32_t sector;
+
+}APP_ConfigTarget_t;
 static APP_ConfigData_t appConfig;
 static uint8_t configDirty = 0;
+
 
 
 static uint32_t APP_Config_CRC32(const uint8_t *data,
                                 uint32_t length);
 static uint8_t APP_Config_Check(APP_ConfigData_t *config);
+static uint32_t APP_Config_GetNextSequence(void);
+static APP_ConfigTarget_t APP_Config_GetWriteTarget(void);
 uint8_t APP_Config_IsDirty(void);
 
 
@@ -46,7 +56,6 @@ void APP_Config_Init(void)
 }
 
 
-
 /**
  * @brief 恢复默认配置
  */
@@ -56,103 +65,206 @@ void APP_Config_Reset(void)
         APP_CONFIG_DEFAULT_INTERVAL;
 }
 
+static uint8_t APP_Config_CheckStorage(
+        APP_ConfigStorage_t *storage
+)
+{
+
+    if(storage == NULL)
+    {
+        return 0;
+    }
+
+    /*
+     * Magic检查
+     */
+    if(storage->magic != APP_CONFIG_MAGIC)
+    {
+        return 0;
+    }
+
+    /*
+     * Version检查
+     */
+    if(storage->version != APP_CONFIG_VERSION)
+    {
+        return 0;
+    }
+
+    /*
+     * 长度检查
+     */
+    if(storage->length != sizeof(APP_ConfigData_t))
+    {
+        return 0;
+    }
+
+    /*
+     * 数据范围检查
+     */
+    if(!APP_Config_Check(
+            &storage->data))
+    {
+        return 0;
+    }
+
+    /*
+     * CRC检查
+     */
+    uint32_t crc;
+
+    crc =
+    APP_Config_CRC32(
+        (const uint8_t *)&storage->data,
+        sizeof(APP_ConfigData_t)
+    );
+
+    if(crc != storage->crc)
+    {
+        return 0;
+    }
+
+    return 1;
+
+}
 
 /**
  * @brief 从Flash加载配置
  */
 APP_ConfigStatus_t APP_Config_Load(void)
 {
-    APP_ConfigStorage_t storage;
 
+    APP_ConfigStorage_t storageA;
+
+    APP_ConfigStorage_t storageB;
+
+    uint8_t validA;
+
+    uint8_t validB;
+
+    /*
+     * 读取Sector6
+     */
     FLASH_Read(
-        FLASH_CONFIG_ADDRESS,
-        (uint8_t *)&storage,
+        FLASH_CONFIG_ADDRESS_A,
+        (uint8_t *)&storageA,
         sizeof(APP_ConfigStorage_t)
     );
 
-
     /*
-     * 检查Magic
+     * 读取Sector7
      */
-    if(storage.magic != APP_CONFIG_MAGIC)
-    {
-        
-        return APP_CONFIG_ERROR_MAGIC;
-    }
-
-
-    /*
-     * 检查版本
-     */
-    if(storage.version != APP_CONFIG_VERSION)
-    {
-        
-        return APP_CONFIG_ERROR_VERSION;
-    }
-
-
-    /*
-     * 检查数据长度
-     */
-    if(storage.length != sizeof(APP_ConfigData_t))
-    {
-        
-        return APP_CONFIG_ERROR_LENGTH;
-    }
-
-
-    /*
-     * CRC校验
-     */
-    uint32_t crc;
-
-    crc =
-    APP_Config_CRC32(
-        (const uint8_t *)&storage.data,
-        sizeof(APP_ConfigData_t)
+    FLASH_Read(
+        FLASH_CONFIG_ADDRESS_B,
+        (uint8_t *)&storageB,
+        sizeof(APP_ConfigStorage_t)
     );
 
-
-    if(crc != storage.crc)
-    {
-        
-        return APP_CONFIG_ERROR_CRC;
-    }
-
     /*
-    * 数据范围检查
-    */
-    if(APP_Config_Check(
-            &storage.data) == 0)
-    {
-        return APP_CONFIG_ERROR_VALUE;
-    }
-    /*
-     * 数据有效
-     * 恢复配置
+     * 检查有效性
      */
-    memcpy(
-        &appConfig,
-        &storage.data,
-        sizeof(APP_ConfigData_t)
+    validA =
+    APP_Config_CheckStorage(
+        &storageA
     );
 
-    return APP_CONFIG_OK;
+    validB =
+    APP_Config_CheckStorage(
+        &storageB
+    );
+
+    /*
+     * 两个都有效
+     */
+    if(validA && validB)
+    {
+
+        if(storageA.sequence >=
+           storageB.sequence)
+        {
+
+            memcpy(
+                &appConfig,
+                &storageA.data,
+                sizeof(APP_ConfigData_t)
+            );
+
+        }
+        else
+        {
+
+            memcpy(
+                &appConfig,
+                &storageB.data,
+                sizeof(APP_ConfigData_t)
+            );
+
+        }
+
+        return APP_CONFIG_OK;
+    }
+
+    /*
+     * A有效 B无效
+     */
+    if(validA)
+    {
+
+        memcpy(
+            &appConfig,
+            &storageA.data,
+            sizeof(APP_ConfigData_t)
+        );
+
+
+        return APP_CONFIG_OK;
+    }
+
+    /*
+     * B有效 A无效
+     */
+    if(validB)
+    {
+
+        memcpy(
+            &appConfig,
+            &storageB.data,
+            sizeof(APP_ConfigData_t)
+        );
+
+
+        return APP_CONFIG_OK;
+    }
+
+    /*
+     * 两个都无效
+     */
+    APP_Config_Reset();
+
+    return APP_CONFIG_ERROR_CRC;
 
 }
-
 
 /**
  * @brief 保存配置到Flash
  */
-APP_ConfigStatus_t  APP_Config_Save(void)
+APP_ConfigStatus_t APP_Config_Save(void)
 {
-    APP_ConfigStorage_t storage;
-    if(APP_Config_Check(&appConfig)==0)
-    {
-        return APP_CONFIG_ERROR_VALUE;
-    }
 
+    APP_ConfigStorage_t storage;
+
+
+    APP_ConfigTarget_t target;
+
+    /*
+     * 获取写入目标
+     */
+    target =
+        APP_Config_GetWriteTarget();
+
+    /*
+     * 填充头信息
+     */
     storage.magic =
         APP_CONFIG_MAGIC;
 
@@ -162,38 +274,48 @@ APP_ConfigStatus_t  APP_Config_Save(void)
     storage.length =
         sizeof(APP_ConfigData_t);
 
+    /*
+     * 生成新的sequence
+     */
+    storage.sequence =
+        APP_Config_GetNextSequence();
 
+    /*
+     * 拷贝配置数据
+     */
     memcpy(
         &storage.data,
         &appConfig,
         sizeof(APP_ConfigData_t)
     );
 
-
+    /*
+     * CRC计算
+     */
     storage.crc =
     APP_Config_CRC32(
         (const uint8_t *)&storage.data,
         sizeof(APP_ConfigData_t)
     );
 
-
     /*
-     * 擦除配置Sector
+     * 擦除目标Sector
      */
-    if(FLASH_EraseConfigSector() != FLASH_OK)
+    if(FLASH_EraseSector(
+            target.sector)
+            != FLASH_OK)
     {
         return APP_CONFIG_ERROR_FLASH_Erase;
     }
-
 
     /*
      * 写入配置
      */
     if(FLASH_Write(
-        FLASH_CONFIG_ADDRESS,
-        (uint8_t *)&storage,
-        sizeof(storage))
-    != FLASH_OK)
+            target.address,
+            (uint8_t *)&storage,
+            sizeof(storage))
+            != FLASH_OK)
     {
         return APP_CONFIG_ERROR_FLASH_Write;
     }
@@ -306,5 +428,177 @@ uint8_t APP_Config_IsDirty(void)
     return configDirty;
 }
 
+static uint32_t APP_Config_GetNextSequence(void)
+{
 
+    APP_ConfigStorage_t storageA;
+
+    APP_ConfigStorage_t storageB;
+
+    uint32_t maxSequence = 0;
+
+
+    /*
+     * 读取A区
+     */
+    FLASH_Read(
+        FLASH_CONFIG_ADDRESS_A,
+        (uint8_t *)&storageA,
+        sizeof(APP_ConfigStorage_t)
+    );
+
+    /*
+     * 读取B区
+     */
+    FLASH_Read(
+        FLASH_CONFIG_ADDRESS_B,
+        (uint8_t *)&storageB,
+        sizeof(APP_ConfigStorage_t)
+    );
+
+    /*
+     * A有效
+     */
+    if(APP_Config_CheckStorage(&storageA))
+    {
+        if(storageA.sequence > maxSequence)
+        {
+            maxSequence =
+                storageA.sequence;
+        }
+    }
+
+    /*
+     * B有效
+     */
+    if(APP_Config_CheckStorage(&storageB))
+    {
+        if(storageB.sequence > maxSequence)
+        {
+            maxSequence =
+                storageB.sequence;
+        }
+    }
+
+    return maxSequence + 1;
+
+}
+
+static APP_ConfigTarget_t APP_Config_GetWriteTarget(void)
+{
+
+    APP_ConfigStorage_t storageA;
+
+    APP_ConfigStorage_t storageB;
+
+    APP_ConfigTarget_t target;
+
+    uint8_t validA;
+
+    uint8_t validB;
+
+    FLASH_Read(
+        FLASH_CONFIG_ADDRESS_A,
+        (uint8_t *)&storageA,
+        sizeof(APP_ConfigStorage_t)
+    );
+
+    FLASH_Read(
+        FLASH_CONFIG_ADDRESS_B,
+        (uint8_t *)&storageB,
+        sizeof(APP_ConfigStorage_t)
+    );
+
+
+    validA =
+    APP_Config_CheckStorage(
+        &storageA
+    );
+
+    validB =
+    APP_Config_CheckStorage(
+        &storageB
+    );
+
+    /*
+     * A、B都有效
+     *
+     * 擦除旧的数据
+     */
+    if(validA && validB)
+    {
+
+        if(storageA.sequence <= storageB.sequence)
+        {
+            target.address =
+                FLASH_CONFIG_ADDRESS_A;
+
+            target.sector =
+                FLASH_SECTOR_6;
+        }
+        else
+        {
+            target.address =
+                FLASH_CONFIG_ADDRESS_B;
+
+            target.sector =
+                FLASH_SECTOR_7;
+        }
+
+        return target;
+
+    }
+
+    /*
+     * A有效，B无效
+     *
+     * 写B，保留A备份
+     */
+    if(validA)
+    {
+
+        target.address =
+            FLASH_CONFIG_ADDRESS_B;
+
+        target.sector =
+            FLASH_SECTOR_7;
+
+
+        return target;
+
+    }
+
+    /*
+     * B有效，A无效
+     *
+     * 写A
+     */
+    if(validB)
+    {
+
+        target.address =
+            FLASH_CONFIG_ADDRESS_A;
+
+        target.sector =
+            FLASH_SECTOR_6;
+
+
+        return target;
+
+    }
+
+    /*
+     * 两个都无效
+     *
+     * 第一次初始化写A
+     */
+    target.address =
+        FLASH_CONFIG_ADDRESS_A;
+
+    target.sector =
+        FLASH_SECTOR_6;
+
+    return target;
+
+}
 

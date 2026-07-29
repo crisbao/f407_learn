@@ -38,7 +38,7 @@ void APP_Init(void)
 void APP_Run(void)
 {
     static uint32_t sensorTick = 0;
-
+	
 
     if(HAL_GetTick()-sensorTick >= 
        APP_Config_GetSensorInterval())

@@ -28,6 +28,8 @@ typedef struct
 
     uint16_t length;
 
+    uint32_t sequence;
+
     APP_ConfigData_t data;
 
     uint32_t crc;

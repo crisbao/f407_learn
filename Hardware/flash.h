@@ -6,14 +6,19 @@
 #include "stm32f4xx_hal.h"
 
 /*
- * STM32F407VET6
- * Flash Sector7
+ * STM32F407VET6 512KB Flash
  *
- * Address:
- * 0x08060000
+ * Sector6:
+ * 0x08040000 ~ 0x0805FFFF
+ *
+ * Sector7:
+ * 0x08060000 ~ 0x0807FFFF
+ *
  */
 
-#define FLASH_CONFIG_ADDRESS 0x08060000U
+#define FLASH_CONFIG_ADDRESS_A 0x08040000U
+
+#define FLASH_CONFIG_ADDRESS_B 0x08060000U
 #define FLASH_CONFIG_SECTOR FLASH_SECTOR_7
 
 typedef enum
@@ -25,7 +30,8 @@ typedef enum
 
 
 
-FLASH_Status_t FLASH_EraseConfigSector(void);
+
+FLASH_Status_t FLASH_EraseSector(uint32_t sector);
 
 
 FLASH_Status_t FLASH_Write(
