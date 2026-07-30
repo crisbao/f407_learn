@@ -14,16 +14,28 @@ typedef struct
     uint32_t sector;
 
 }APP_ConfigTarget_t;
+typedef enum
+{
+    APP_CONFIG_REPAIR_NONE = 0,
+
+    APP_CONFIG_REPAIR_TO_A,
+
+    APP_CONFIG_REPAIR_TO_B
+
+} APP_ConfigRepairTarget_t;
+static uint8_t configRepairPending = 0;
+static APP_ConfigRepairTarget_t configRepairTarget = APP_CONFIG_REPAIR_NONE;
+static APP_ConfigStorage_t repairStorage;
 static APP_ConfigData_t appConfig;
 static uint8_t configDirty = 0;
 
 
 
-static uint32_t APP_Config_CRC32(const uint8_t *data,
-                                uint32_t length);
+static uint32_t APP_Config_CRC32(const uint8_t *data,uint32_t length);
 static uint8_t APP_Config_Check(APP_ConfigData_t *config);
 static uint32_t APP_Config_GetNextSequence(void);
 static APP_ConfigTarget_t APP_Config_GetWriteTarget(void);
+static APP_ConfigStatus_t APP_Config_Repair(void);
 uint8_t APP_Config_IsDirty(void);
 
 
@@ -173,6 +185,14 @@ APP_ConfigStatus_t APP_Config_Load(void)
         &storageB
     );
 
+    USART_Printf(
+            &huart1,
+            "validA=%d validB=%d seqA=%lu seqB=%lu\r\n",
+            validA,
+            validB,
+            storageA.sequence,
+            storageB.sequence
+        );
     /*
      * 两个都有效
      */
@@ -209,13 +229,21 @@ APP_ConfigStatus_t APP_Config_Load(void)
      */
     if(validA)
     {
-
         memcpy(
             &appConfig,
             &storageA.data,
             sizeof(APP_ConfigData_t)
         );
 
+        memcpy(
+            &repairStorage,
+            &storageA,
+            sizeof(APP_ConfigStorage_t)
+        );
+
+        configRepairPending = 1;
+
+        configRepairTarget = APP_CONFIG_REPAIR_TO_B;
 
         return APP_CONFIG_OK;
     }
@@ -232,6 +260,16 @@ APP_ConfigStatus_t APP_Config_Load(void)
             sizeof(APP_ConfigData_t)
         );
 
+        memcpy(
+            &repairStorage,
+            &storageB,
+            sizeof(APP_ConfigStorage_t)
+        );
+
+        configRepairPending = 1;
+
+        configRepairTarget = APP_CONFIG_REPAIR_TO_A;
+
 
         return APP_CONFIG_OK;
     }
@@ -240,6 +278,30 @@ APP_ConfigStatus_t APP_Config_Load(void)
      * 两个都无效
      */
     APP_Config_Reset();
+
+    repairStorage.magic = APP_CONFIG_MAGIC;
+
+    repairStorage.version = APP_CONFIG_VERSION;
+
+    repairStorage.length = sizeof(APP_ConfigData_t);
+
+    repairStorage.sequence = 1;
+
+    memcpy(
+        &repairStorage.data,
+        &appConfig,
+        sizeof(APP_ConfigData_t)
+    );
+
+    repairStorage.crc =
+    APP_Config_CRC32(
+        (const uint8_t *)&repairStorage.data,
+        sizeof(APP_ConfigData_t)
+    );
+
+    configRepairPending = APP_CONFIG_INITIAL_SEQUENCE;
+
+    configRepairTarget = APP_CONFIG_REPAIR_TO_A;
 
     return APP_CONFIG_ERROR_CRC;
 
@@ -601,4 +663,89 @@ static APP_ConfigTarget_t APP_Config_GetWriteTarget(void)
     return target;
 
 }
+
+static APP_ConfigStatus_t APP_Config_Repair(void)
+{
+    uint32_t address;
+    uint32_t sector;
+    USART_Printf(
+        &huart1,
+        "Repair Start\r\n"
+    );
+    if(configRepairPending == 0)
+    {
+        return APP_CONFIG_OK;
+    }
+
+    switch(configRepairTarget)
+    {
+    case APP_CONFIG_REPAIR_TO_A:
+
+        address = FLASH_CONFIG_ADDRESS_A;
+        sector = FLASH_SECTOR_6;
+
+        break;
+
+    case APP_CONFIG_REPAIR_TO_B:
+
+        address = FLASH_CONFIG_ADDRESS_B;
+        sector = FLASH_SECTOR_7;
+
+        break;
+
+    default:
+
+        return APP_CONFIG_ERROR_FLASH_Write;
+    }
+
+    /*
+     * 擦除目标扇区
+     */
+    if(FLASH_EraseSector(sector)
+        != FLASH_OK)
+    {
+        return APP_CONFIG_ERROR_FLASH_Erase;
+    }
+
+    /*
+     * 写入完整配置结构
+     */
+    if(FLASH_Write(
+            address,
+            (uint8_t *)&repairStorage,
+            sizeof(APP_ConfigStorage_t))
+        != FLASH_OK)
+    {
+        return APP_CONFIG_ERROR_FLASH_Write;
+    }
+
+    /*
+     * 修复完成
+     */
+    configRepairPending = 0;
+
+    configRepairTarget = APP_CONFIG_REPAIR_NONE;
+    USART_Printf(
+        &huart1,
+        "Repair OK\r\n"
+    );
+
+    return APP_CONFIG_OK;
+}
+
+/**
+ * @brief 配置后台处理
+ *
+ * 处理Flash配置自动修复
+ */
+void APP_Config_Process(void)
+{
+    if(configRepairPending)
+    {
+        APP_Config_Repair();
+    }
+}
+
+
+
 

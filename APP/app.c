@@ -21,6 +21,8 @@ void APP_Init(void)
 		APP_System_Init();
 
 		APP_Config_Init();
+	
+		
     
     APP_Sensor_Init();
 
@@ -38,8 +40,8 @@ void APP_Init(void)
 void APP_Run(void)
 {
     static uint32_t sensorTick = 0;
-	
-
+		
+    
     if(HAL_GetTick()-sensorTick >= 
        APP_Config_GetSensorInterval())
     {
@@ -51,10 +53,13 @@ void APP_Run(void)
 
     }
 
+    /*
+     * Flash≈‰÷√∫ÛÃ®Œ¨ª§
+     */
+    APP_Config_Process();
 
     APP_Protocol_Process();
 
-    //APP_Config_Process();
 
     APP_Display_Update();
 

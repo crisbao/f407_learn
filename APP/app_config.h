@@ -11,6 +11,7 @@
 
 
 #define APP_CONFIG_DEFAULT_INTERVAL 1000
+#define APP_CONFIG_INITIAL_SEQUENCE    1U
 
 
 typedef struct
@@ -68,5 +69,8 @@ APP_ConfigStatus_t  APP_Config_Save(void);
 void APP_Config_Reset(void);
 
 uint8_t APP_Config_IsDirty(void);
+
+void APP_Config_Process(void);
+
 
 #endif
