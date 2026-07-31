@@ -220,6 +220,12 @@ void APP_Display_Update(void)
 
             break;
 
+        //case DISPLAY_PAGE_CONFIG:
+
+         //   APP_Display_ShowConfigPage();
+
+        //    break;
+
         case DISPLAY_PAGE_DEBUG:
 
             APP_Display_ShowDebugPage();

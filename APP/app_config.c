@@ -28,6 +28,7 @@ static APP_ConfigRepairTarget_t configRepairTarget = APP_CONFIG_REPAIR_NONE;
 static APP_ConfigStorage_t repairStorage;
 static APP_ConfigData_t appConfig;
 static uint8_t configDirty = 0;
+static uint32_t configDirtyTick = 0;
 
 
 
@@ -405,6 +406,8 @@ void APP_Config_SetSensorInterval(uint32_t ms)
 
         configDirty = 1;
 
+        configDirtyTick = HAL_GetTick();
+
     }
 
 }
@@ -740,12 +743,155 @@ static APP_ConfigStatus_t APP_Config_Repair(void)
  */
 void APP_Config_Process(void)
 {
+
+    /*
+     * 优先处理修复
+     */
     if(configRepairPending)
     {
         APP_Config_Repair();
+
+        return;
     }
+
+    /*
+     * 延迟保存
+     */
+    if(configDirty)
+    {
+
+        if(HAL_GetTick() - configDirtyTick >= 30000)
+        {
+
+            if(APP_Config_Save()
+                == APP_CONFIG_OK)
+            {
+
+                configDirty = 0;
+
+                USART_Printf(
+                    &huart1,
+                    "Config Saved\r\n"
+                );
+
+            }
+
+        }
+		}
+
 }
 
 
+/**
+ * @brief 打印Flash配置状态
+ */
+void APP_Config_PrintInfo(void)
+{
+    APP_ConfigStorage_t storageA;
+    APP_ConfigStorage_t storageB;
 
+    uint8_t validA;
+    uint8_t validB;
+
+    /*
+     * 读取Sector6
+     */
+    FLASH_Read(
+        FLASH_CONFIG_ADDRESS_A,
+        (uint8_t *)&storageA,
+        sizeof(APP_ConfigStorage_t)
+    );
+
+    /*
+     * 读取Sector7
+     */
+    FLASH_Read(
+        FLASH_CONFIG_ADDRESS_B,
+        (uint8_t *)&storageB,
+        sizeof(APP_ConfigStorage_t)
+    );
+
+    /*
+     * 校验
+     */
+    validA =
+    APP_Config_CheckStorage(
+        &storageA
+    );
+
+    validB =
+    APP_Config_CheckStorage(
+        &storageB
+    );
+
+    USART_Printf(
+        &huart1,
+        "\r\n========== CONFIG ==========\r\n"
+    );
+
+    /*
+     * Sector6
+     */
+    USART_Printf(
+        &huart1,
+        "FLASH A:\r\n"
+    );
+
+    USART_Printf(
+        &huart1,
+        "valid=%d seq=%lu interval=%lu crc=0x%08lX\r\n",
+        validA,
+        validA ? storageA.sequence : 0,
+        validA ? storageA.data.sensorIntervalMs : 0,
+        validA ? storageA.crc : 0
+    );
+
+    /*
+     * Sector7
+     */
+    USART_Printf(
+        &huart1,
+        "FLASH B:\r\n"
+    );
+
+    USART_Printf(
+        &huart1,
+        "valid=%d seq=%lu interval=%lu crc=0x%08lX\r\n",
+        validB,
+        validB ? storageB.sequence : 0,
+        validB ? storageB.data.sensorIntervalMs : 0,
+        validB ? storageB.crc : 0
+    );
+
+    /*
+     * 当前RAM
+     */
+    USART_Printf(
+        &huart1,
+        "RAM:\r\n"
+    );
+
+    USART_Printf(
+        &huart1,
+        "interval=%lu ms\r\n",
+        appConfig.sensorIntervalMs
+    );
+
+    /*
+     * 修复状态
+     */
+
+    USART_Printf(
+        &huart1,
+        "RepairPending=%d Target=%d\r\n",
+        configRepairPending,
+        configRepairTarget
+    );
+
+    USART_Printf(
+        &huart1,
+        "============================\r\n"
+    );
+
+}
 

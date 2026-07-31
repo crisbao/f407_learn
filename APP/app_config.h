@@ -72,5 +72,7 @@ uint8_t APP_Config_IsDirty(void);
 
 void APP_Config_Process(void);
 
+void APP_Config_PrintInfo(void);
+
 
 #endif

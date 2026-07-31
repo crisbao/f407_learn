@@ -136,6 +136,11 @@ static void APP_Cmd_Page(char *param)
         APP_Display_SetPage(DISPLAY_PAGE_SYSTEM);
     }
 
+     //else if(strcmp(param,"CONFIG")==0)
+    //{
+    //    APP_Display_SetPage(DISPLAY_PAGE_CONFIG);
+    //}
+
     else if(strcmp(param,"DEBUG")==0)
     {
         APP_Display_SetPage(DISPLAY_PAGE_DEBUG);
@@ -154,7 +159,6 @@ static void APP_Cmd_Page(char *param)
 static void APP_Cmd_SetInterval(char *param)
 {
     uint32_t sec;
-    APP_ConfigStatus_t ret;
 
     if(param == NULL)
     {
@@ -172,31 +176,16 @@ static void APP_Cmd_SetInterval(char *param)
 
     APP_Config_SetSensorInterval(sec * 1000);
 
-    ret = APP_Config_Save();
+    HC05_Printf(
+        "INTERVAL=%lu s SET\r\n",
+        sec
+    );
 
-    if(ret == APP_CONFIG_OK)
-    {
-        HC05_Printf(
-            "INTERVAL=%lu s OK\r\n",
-            sec
-        );
-
-        USART_Printf(
-            &huart1,
-            "Config Saved\r\n"
-            "Interval = %lu ms\r\n",
-            sec * 1000
-        );
-    }
-    else
-    {
-        HC05_Printf("Save Failed\r\n");
-
-        USART_Printf(
-            &huart1,
-            "Config Save Failed\r\n"
-        );
-    }
+    USART_Printf(
+        &huart1,
+        "Interval changed = %lu ms\r\n",
+        sec * 1000
+    );
 }
 
 static const char *APP_PageToString(APP_DisplayPage_t page)
@@ -276,6 +265,27 @@ static void APP_Cmd_Status(char *param)
 }
 
 /**
+ * @brief CONFIG命令
+ * @param param 命令参数
+ */
+static void APP_Cmd_Config(char *param)
+{
+    /*
+     * CONFIG命令不接受参数
+     */
+    if(param != NULL)
+    {
+        HC05_Printf(
+            "ERROR: CONFIG no parameter\r\n"
+        );
+
+        return;
+    }
+    APP_Config_PrintInfo();
+
+}
+
+/**
  * @brief 命令表
  */
 static const APP_Command_t APP_CommandTable[] =
@@ -292,7 +302,9 @@ static const APP_Command_t APP_CommandTable[] =
 
     {"PAGE",APP_Cmd_Page},
 		
-		{"INTERVAL",APP_Cmd_SetInterval}
+		{"INTERVAL",APP_Cmd_SetInterval},
+
+        {"CONFIG",APP_Cmd_Config}
 };
 
 /**
