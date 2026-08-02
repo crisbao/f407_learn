@@ -5,6 +5,8 @@
 #include "app_status.h"
 #include "app_system.h"
 
+#include "usart.h"
+#include "usart_driver.h"
 #include "oled.h"
 
 
@@ -25,15 +27,21 @@ static APP_DisplayPage_t lastPage = DISPLAY_PAGE_HOME;
 void APP_Display_Init(void)
 {
     OLED_Init();
+    HAL_Delay(100);
 
     OLED_Clear();
 
     firstRefresh = 1;
     currentPage = DISPLAY_PAGE_HOME;
 
-    OLED_ShowString(0, 0, " Smart Home");
+    lastPage = DISPLAY_PAGE_HOME;
 
-    OLED_Refresh();
+    memset(
+        &lastSensor,
+        0,
+        sizeof(lastSensor)
+    );
+
 }
 
 
@@ -99,16 +107,28 @@ static void APP_Display_SaveState(void)
 
 static void APP_Display_ShowHomePage(void)
 {
+//    USART_Printf(
+//        &huart1,
+//        "Show Home Page\r\n"
+//    );
 		const DHT11_Data_t *sensor;
 		sensor = APP_Sensor_GetData();
 	
 		OLED_ShowString(0, 0, "Smart Home");
+    if(APP_System_IsSensorReady())
+    {
+        OLED_Printf(0,16,"Temp:%d.%d C",sensor->temperature,sensor->temperature_dec);
 
-    OLED_Printf(0,16,"Temp:%d.%d C",sensor->temperature,sensor->temperature_dec);
+        OLED_Printf(0,32,"Humi:%d.%d %%",sensor->humidity,sensor->humidity_dec);
+    }
+    else
+    {
+        OLED_ShowString(0,16,"Temp:--.- C");
 
-    OLED_Printf(0,32,"Humi:%d.%d %%",sensor->humidity,sensor->humidity_dec);
+        OLED_ShowString(0,32,"Humi:--.- %%");
+    }
 		
-		if(APP_Control_GetLEDState() == APP_LED_ON)
+	if(APP_Control_GetLEDState() == APP_LED_ON)
     {
         OLED_ShowString(0,48,"LED : ON ");
     }
@@ -193,11 +213,25 @@ static void APP_Display_ShowDebugPage(void)
 
 void APP_Display_Update(void)
 {
-    if(APP_Display_IsChanged() == 0)
+    uint8_t changed;
+
+    changed = APP_Display_IsChanged();
+
+//    USART_Printf(
+//        &huart1,
+//        "Display Changed=%d\r\n",
+//        changed
+//    );
+
+    if(changed == 0)
     {
         return;
     }
 
+//    USART_Printf(
+//        &huart1,
+//        "OLED Refresh Start\r\n"
+//    );
     OLED_Clear();
 
     switch(currentPage)
@@ -237,7 +271,9 @@ void APP_Display_Update(void)
             break;
     }
 
+
     OLED_Refresh();
+
 
     APP_Display_SaveState();
 }
@@ -249,7 +285,10 @@ void APP_Display_SetPage(APP_DisplayPage_t page)
         return;
     }
 
-    currentPage = page;
+    if(currentPage != page)
+    {
+        currentPage = page;
+    }
 }
 
 void APP_Display_Clear(void)

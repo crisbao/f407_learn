@@ -45,4 +45,8 @@ void APP_System_SetConfigStatus(
 
 APP_ConfigStatus_t APP_System_GetConfigStatus(void);
 
+uint8_t APP_System_IsSensorReady(void);
+
+void APP_System_SetSensorReady(uint8_t ready);
+
 #endif

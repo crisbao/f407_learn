@@ -13,6 +13,19 @@
 #define APP_CONFIG_DEFAULT_INTERVAL 1000
 #define APP_CONFIG_INITIAL_SEQUENCE    1U
 
+/**
+ * @brief 最小传感器采样周期(ms)
+ */
+#define APP_CONFIG_MIN_INTERVAL_MS          500U
+/**
+ * @brief 最大传感器采样周期(ms)
+ */
+#define APP_CONFIG_MAX_INTERVAL_MS          60000U
+/**
+ * @brief 配置延迟保存时间(ms)
+ */
+#define APP_CONFIG_SAVE_DELAY_MS    30000U
+
 
 typedef struct
 {

@@ -7,7 +7,7 @@ static HAL_StatusTypeDef dhtStatus;
 
 static uint8_t btStatus;
 static APP_ConfigStatus_t configStatus;
-
+static uint8_t sensorReady = 0;
 
 void APP_System_Init(void)
 {
@@ -79,4 +79,17 @@ void APP_System_SetConfigStatus(
 APP_ConfigStatus_t APP_System_GetConfigStatus(void)
 {
     return configStatus;
+}
+
+void APP_System_SetSensorReady(
+    uint8_t ready
+)
+{
+    sensorReady = ready;
+}
+
+
+uint8_t APP_System_IsSensorReady(void)
+{
+    return sensorReady;
 }

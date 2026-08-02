@@ -1,6 +1,7 @@
 #include "app_config.h"
 #include "app_status.h"
 #include "app_system.h"
+#include "app_event.h"
 #include "usart_driver.h"
 #include "usart.h"
 #include "flash.h"
@@ -186,14 +187,14 @@ APP_ConfigStatus_t APP_Config_Load(void)
         &storageB
     );
 
-    USART_Printf(
-            &huart1,
-            "validA=%d validB=%d seqA=%lu seqB=%lu\r\n",
-            validA,
-            validB,
-            storageA.sequence,
-            storageB.sequence
-        );
+//    USART_Printf(
+//            &huart1,
+//            "validA=%d validB=%d seqA=%lu seqB=%lu\r\n",
+//            validA,
+//            validB,
+//            storageA.sequence,
+//            storageB.sequence
+//        );
     /*
      * 两个都有效
      */
@@ -371,17 +372,32 @@ APP_ConfigStatus_t APP_Config_Save(void)
         return APP_CONFIG_ERROR_FLASH_Erase;
     }
 
-    /*
-     * 写入配置
-     */
     if(FLASH_Write(
-            target.address,
-            (uint8_t *)&storage,
-            sizeof(storage))
-            != FLASH_OK)
+        target.address,
+        (uint8_t *)&storage,
+        sizeof(storage))
+        != FLASH_OK)
     {
         return APP_CONFIG_ERROR_FLASH_Write;
     }
+
+    /*
+    * Flash保存成功事件
+    */
+    APP_Event_t event;
+
+    event.type =
+        APP_EVENT_CONFIG;
+
+    event.id =
+        APP_CONFIG_EVENT_SAVE_DONE;
+
+    event.param =
+        target.address;
+
+    APP_Event_Post(
+        &event
+    );
 
     return APP_CONFIG_OK;
 
@@ -393,7 +409,6 @@ APP_ConfigStatus_t APP_Config_Save(void)
  */
 void APP_Config_SetSensorInterval(uint32_t ms)
 {
-
     if(ms < 500)
     {
         ms = 500;
@@ -401,15 +416,34 @@ void APP_Config_SetSensorInterval(uint32_t ms)
 
     if(appConfig.sensorIntervalMs != ms)
     {
-
         appConfig.sensorIntervalMs = ms;
 
         configDirty = 1;
 
         configDirtyTick = HAL_GetTick();
 
-    }
+        /*
+         * 发送配置变化事件
+         */
+        APP_Event_t event;
 
+        event.type =
+            APP_EVENT_CONFIG;
+
+        event.id =
+            APP_CONFIG_EVENT_CHANGED;
+
+        event.param =
+            ms;
+        USART_Printf(
+    &huart1,
+    "Post Config Event interval=%lu\r\n",
+    ms
+);
+        APP_Event_Post(
+            &event
+        );
+    }
 }
 
 
@@ -468,18 +502,18 @@ static uint8_t APP_Config_Check(
      * 采样周期范围检查
      *
      * 最小:
-     * 500ms
+     * APP_CONFIG_MIN_INTERVAL_MS
      *
      * 最大:
-     * 60000ms
+     * APP_CONFIG_MAX_INTERVAL_MS
      */
-    if(config->sensorIntervalMs < 500)
+    if(config->sensorIntervalMs < APP_CONFIG_MIN_INTERVAL_MS)
     {
         return 0;
     }
 
 
-    if(config->sensorIntervalMs > 60000)
+    if(config->sensorIntervalMs > APP_CONFIG_MAX_INTERVAL_MS)
     {
         return 0;
     }
@@ -760,7 +794,7 @@ void APP_Config_Process(void)
     if(configDirty)
     {
 
-        if(HAL_GetTick() - configDirtyTick >= 30000)
+        if(HAL_GetTick() - configDirtyTick >= APP_CONFIG_SAVE_DELAY_MS)
         {
 
             if(APP_Config_Save()

@@ -4,6 +4,7 @@
 #include "app_display.h"
 #include "app_config.h"
 #include "app_system.h"
+#include "app_event.h"
 #include "hc05.h"
 #include "usart_driver.h"
 
@@ -113,37 +114,27 @@ static void APP_Cmd_OLED(char *param)
 
 static void APP_Cmd_Page(char *param)
 {
-
-    if(param == NULL)
-    {
-        HC05_Printf("ERR PARAM\r\n");
-        return;
-    }
-
+    APP_Event_t event;
+    APP_DisplayPage_t page;
 
     if(strcmp(param,"HOME")==0)
     {
-        APP_Display_SetPage(DISPLAY_PAGE_HOME);
+        page = DISPLAY_PAGE_HOME;
     }
 
     else if(strcmp(param,"SENSOR")==0)
     {
-        APP_Display_SetPage(DISPLAY_PAGE_SENSOR);
+        page = DISPLAY_PAGE_SENSOR;
     }
 
     else if(strcmp(param,"SYSTEM")==0)
     {
-        APP_Display_SetPage(DISPLAY_PAGE_SYSTEM);
+        page = DISPLAY_PAGE_SYSTEM;
     }
-
-     //else if(strcmp(param,"CONFIG")==0)
-    //{
-    //    APP_Display_SetPage(DISPLAY_PAGE_CONFIG);
-    //}
 
     else if(strcmp(param,"DEBUG")==0)
     {
-        APP_Display_SetPage(DISPLAY_PAGE_DEBUG);
+        page = DISPLAY_PAGE_DEBUG;
     }
 
     else
@@ -152,8 +143,22 @@ static void APP_Cmd_Page(char *param)
         return;
     }
 
+    event.type = APP_EVENT_DISPLAY;
 
-    HC05_Printf("PAGE %s OK\r\n",param);
+    event.id = APP_DISPLAY_EVENT_PAGE_CHANGED;
+    event.param = page;
+    APP_Event_Post(&event);
+
+    if(APP_Event_Post(&event)
+       == APP_EVENT_OK)
+    {
+        HC05_Printf("PAGE %s OK\r\n",param);
+    }
+    else
+    {
+        HC05_Printf("EVENT FULL\r\n");
+    }
+
 }
 
 static void APP_Cmd_SetInterval(char *param)

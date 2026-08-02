@@ -1,8 +1,12 @@
+# =========================
 # Keil build output
+# =========================
+
 Objects/
 Listings/
 
 *.axf
+*.elf
 *.hex
 *.bin
 *.map
@@ -16,23 +20,50 @@ Listings/
 *.sct
 *.lst
 
+
+# =========================
 # Keil user settings
+# =========================
+
 *.uvguix.*
 *.uvoptx
+*.uvprojx.user
 
-# Keil debug configuration
+
+# =========================
+# Keil debug
+# =========================
+
 *.dbgconf
 
-# Keil RTE generated files
+
+# =========================
+# Keil RTE
+# =========================
+
 RTE/
 
-# Log files
-*.log
 
-# Backup files
+# =========================
+# Log and temporary
+# =========================
+
+*.log
 *.bak
 *.tmp
 
+
+# =========================
 # IDE
+# =========================
+
 .vscode/
 .idea/
+
+
+# =========================
+# OS
+# =========================
+
+.DS_Store
+Thumbs.db

@@ -59,4 +59,3 @@ void USART_NewLine(UART_HandleTypeDef *huart);
 
 
 #endif
-															 

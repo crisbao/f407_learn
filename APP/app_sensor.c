@@ -1,46 +1,80 @@
 #include "app_sensor.h"
 #include "app_system.h"
+#include "app_event.h"
 #include <string.h>
 #include "usart.h"
 #include "usart_driver.h"
 
 static DHT11_Data_t sensorData;
+static DHT11_Data_t lastSensorData;
+
 
 void APP_Sensor_Init(void)
 {
     DHT11_Init();
-		memset(&sensorData,
-           0,
-           sizeof(sensorData));
+
+    memset(
+        &sensorData,
+        0,
+        sizeof(sensorData)
+    );
+
+    memset(
+        &lastSensorData,
+        0,
+        sizeof(lastSensorData)
+    );
 }
 
 /**
- * @brief  ����
- * 
+ * @brief 更新传感器数�?
+ *
+ * 读取DHT11数据，并在成功后发送传感器更新事件�?
+ *
+ * @return
+ *        HAL_OK      读取成功
+ *        其他        读取失败
  */
 HAL_StatusTypeDef APP_Sensor_Update(void)
 {
-    //HAL_StatusTypeDef ret;
-
-    //ret = DHT11_Read(&sensorData);
-
-    //return ret;
     HAL_StatusTypeDef ret;
-
+		APP_Event_t event;
     ret = DHT11_Read(&sensorData);
-		
-		/*
-     * 更新系统状态
-     */
     APP_System_SetDHTStatus(ret);
 
-    USART_Printf(&huart1,
-                 "ret=%d Temp=%d.%d C Humi=%d.%d %%\r\n",
-                 ret,
-                 sensorData.temperature,
-                 sensorData.temperature_dec,
-                 sensorData.humidity,
-                 sensorData.humidity_dec);
+    if(ret == HAL_OK)
+    {
+        APP_System_SetSensorReady(1);
+        /*
+        * �жϴ����������Ƿ�仯
+        */
+        if(memcmp(
+            &sensorData,
+            &lastSensorData,
+            sizeof(DHT11_Data_t))
+            != 0)
+        {
+            event.type =
+                APP_EVENT_SENSOR;
+
+            event.id =
+                APP_SENSOR_EVENT_UPDATE;
+
+            event.param = 0;
+
+            APP_Event_Post(
+                &event
+            );
+            /*
+            * ���浱ǰ����
+            */
+            memcpy(
+                &lastSensorData,
+                &sensorData,
+                sizeof(DHT11_Data_t)
+            );
+        }
+    }
 
     return ret;
 }
