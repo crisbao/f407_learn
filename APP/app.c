@@ -13,16 +13,12 @@
 #include "app_event_handle.h"
 #include "app_timer.h"
 
-/**
- * @brief Sensor定时器回调
- *
- * 周期触发传感器采集。
- *
- * @return 无
- */
-static void APP_Timer_SensorCallback(void)
+static void APP_Timer_TestCallback(void)
 {
-    APP_Sensor_Update();
+    USART_Printf(
+        &huart1,
+        "TIMER CALLBACK\r\n"
+    );
 }
 /*----------------------------------------------------------
  * APP初始化
@@ -34,7 +30,16 @@ void APP_Init(void)
 		APP_Event_Init();
 	
 		APP_Timer_Init();
+APP_Timer_Create(
+    APP_TIMER_SENSOR,
+    3000,
+    APP_TIMER_MODE_PERIODIC,
+    APP_Timer_TestCallback
+);
 
+APP_Timer_Start(
+    APP_TIMER_SENSOR
+);
 		APP_System_Init();
 
 		APP_Config_Init();
@@ -42,24 +47,12 @@ void APP_Init(void)
     
     APP_Sensor_Init();
 		
-		/*
-     * 创建Sensor Timer
-     */
-    APP_Timer_Create(
-        APP_TIMER_SENSOR,
-        APP_Config_GetSensorInterval(),
-        APP_TIMER_MODE_PERIODIC,
-        APP_Timer_SensorCallback
-    );
-
-
-    APP_Timer_Start(
-        APP_TIMER_SENSOR
-    );
     APP_Control_Init();
 
     APP_Display_Init();
-	
+    /*
+     * 上电事件
+     */	
     APP_Event_t event;
 
     event.type = APP_EVENT_SYSTEM;
@@ -72,6 +65,7 @@ void APP_Init(void)
 
 
 }
+
 
 /*----------------------------------------------------------
  * APP主循环

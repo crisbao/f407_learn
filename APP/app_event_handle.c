@@ -12,13 +12,6 @@ void APP_Event_Process(void)
     while(APP_Event_Get(&event)
           == APP_EVENT_OK)
     {
-//        USART_Printf(
-//            &huart1,
-//            "Process Event type=%d id=%d param=%lu\r\n",
-//            event.type,
-//            event.id,
-//            event.param
-//        );
 
         switch(event.type)
         {

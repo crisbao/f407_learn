@@ -27,7 +27,8 @@ typedef enum
  */
 typedef enum
 {
-    APP_SENSOR_EVENT_UPDATE = 0,
+    APP_SENSOR_EVENT_UPDATE  = 0,
+    APP_SENSOR_EVENT_TRIGGER = 1
 
 } APP_SensorEvent_t;
 

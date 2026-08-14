@@ -29,7 +29,7 @@ static void APP_Cmd_Page(char *param);
 static void APP_Cmd_SetInterval(char *param);
 static void APP_Cmd_OLED(char *param);
 /**
- * @brief Ğ­Òé³õÊ¼»¯
+ * @brief Ğ­ï¿½ï¿½ï¿½Ê¼ï¿½ï¿½
  */
 void APP_Protocol_Init(void)
 {
@@ -37,7 +37,7 @@ void APP_Protocol_Init(void)
 }
 
 /**
- * @brief Ğ­Òé´¦Àí
+ * @brief Ğ­ï¿½é´¦ï¿½ï¿½
  */
 void APP_Protocol_Process(void)
 {
@@ -116,6 +116,7 @@ static void APP_Cmd_Page(char *param)
 {
     APP_Event_t event;
     APP_DisplayPage_t page;
+    uint8_t ret;
 
     if(strcmp(param,"HOME")==0)
     {
@@ -147,10 +148,9 @@ static void APP_Cmd_Page(char *param)
 
     event.id = APP_DISPLAY_EVENT_PAGE_CHANGED;
     event.param = page;
-    APP_Event_Post(&event);
+    ret = APP_Event_Post(&event);
 
-    if(APP_Event_Post(&event)
-       == APP_EVENT_OK)
+    if(ret == APP_EVENT_OK)
     {
         HC05_Printf("PAGE %s OK\r\n",param);
     }
@@ -216,11 +216,11 @@ static const char *APP_PageToString(APP_DisplayPage_t page)
 
 static void APP_Cmd_Status(char *param)
 {
-    const DHT11_Data_t *sensor;
+    APP_SensorData_t sensor;
     APP_ConfigStatus_t cfg;
     cfg = APP_System_GetConfigStatus();
 
-    sensor = APP_Sensor_GetData();
+    APP_Sensor_GetData(&sensor);
 
     HC05_Printf("\r\n");
     HC05_Printf("------ STATUS ------\r\n");
@@ -246,13 +246,13 @@ static void APP_Cmd_Status(char *param)
         );
     }
 
-    HC05_Printf("Temp : %d.%d C\r\n",
-                sensor->temperature,
-                sensor->temperature_dec);
+    HC05_Printf("Temp : %.1f C\r\n",
+                sensor.temperature
+                );
 
-    HC05_Printf("Humi : %d.%d %%\r\n",
-                sensor->humidity,
-                sensor->humidity_dec);
+    HC05_Printf("Humi : %.1f %%\r\n",
+                sensor.humidity
+                );
 
     HC05_Printf("LED  : %s\r\n",
                 APP_Control_GetLEDState() == APP_LED_ON ?
@@ -270,13 +270,13 @@ static void APP_Cmd_Status(char *param)
 }
 
 /**
- * @brief CONFIGÃüÁî
- * @param param ÃüÁî²ÎÊı
+ * @brief CONFIGï¿½ï¿½ï¿½ï¿½
+ * @param param ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
  */
 static void APP_Cmd_Config(char *param)
 {
     /*
-     * CONFIGÃüÁî²»½ÓÊÜ²ÎÊı
+     * CONFIGï¿½ï¿½ï¿½î²»ï¿½ï¿½ï¿½Ü²ï¿½ï¿½ï¿½
      */
     if(param != NULL)
     {
@@ -291,7 +291,7 @@ static void APP_Cmd_Config(char *param)
 }
 
 /**
- * @brief ÃüÁî±í
+ * @brief ï¿½ï¿½ï¿½ï¿½ï¿½
  */
 static const APP_Command_t APP_CommandTable[] =
 {
@@ -313,8 +313,8 @@ static const APP_Command_t APP_CommandTable[] =
 };
 
 /**
- * @brief ½âÎöÒ»ÌõÍêÕûÃüÁî
- * @param cmd ÃüÁî×Ö·û´®
+ * @brief ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+ * @param cmd ï¿½ï¿½ï¿½ï¿½ï¿½Ö·ï¿½ï¿½ï¿½
  */
 static void APP_Protocol_Parse(char *cmd)
 {
@@ -323,7 +323,7 @@ static void APP_Protocol_Parse(char *cmd)
     char *param = NULL;
 
 
-    /* ²éÕÒµÚÒ»¸ö¿Õ¸ñ */
+    /* ï¿½ï¿½ï¿½Òµï¿½Ò»ï¿½ï¿½ï¿½Õ¸ï¿½ */
     param = strchr(cmd,' ');
 
 
@@ -356,7 +356,7 @@ static void APP_Protocol_Parse(char *cmd)
 }
 
 /**
- * @brief ÊäÈëÒ»¸ö×Ö·û
+ * @brief ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½Ö·ï¿½
  */
 static void APP_Protocol_Input(uint8_t ch)
 {

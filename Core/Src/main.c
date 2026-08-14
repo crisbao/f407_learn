@@ -27,6 +27,7 @@
 //#include "oled.h"
 //#include "usart_driver.h"
 #include "delay.h"
+#include "usart_driver.h"
 //#include "dht11.h"
 //#include "hc05.h"
 #include "app.h"
@@ -100,14 +101,29 @@ int main(void)
   MX_I2C1_Init();
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
-  Delay_Init();
+//  Delay_Init();
 
-  APP_Init();
+//  APP_Init();
 
-  APP_FreeRTOS_Init();
+//  APP_FreeRTOS_Init();
 
-  vTaskStartScheduler();
-	
+//  vTaskStartScheduler();
+	Delay_Init();
+
+    USART_Printf(&huart1, "MAIN 1\r\n");
+
+    APP_Init();
+
+    USART_Printf(&huart1, "MAIN 2\r\n");
+
+    APP_FreeRTOS_Init();
+
+    USART_Printf(&huart1, "MAIN 3\r\n");
+
+    vTaskStartScheduler();
+
+    USART_Printf(&huart1, "MAIN 4 - SCHEDULER RETURNED\r\n");
+
   /* USER CODE END 2 */
 
   /* Infinite loop */

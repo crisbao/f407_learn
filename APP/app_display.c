@@ -1,20 +1,24 @@
-#include "app_display.h"
+#include "FreeRTOS.h"
+//#include "semphr.h"
 
+#include "app_display.h"
 #include "app_sensor.h"
 #include "app_control.h"
 #include "app_status.h"
 #include "app_system.h"
+#include "app_freertos.h"
 
 #include "usart.h"
 #include "usart_driver.h"
 #include "oled.h"
 
 
-static DHT11_Data_t lastSensor;
+
+static APP_SensorData_t  lastSensor;
 
 static APP_LED_State_t lastLedState = APP_LED_OFF;
 
-/* Ê×´ÎË¢ÐÂ±êÖ¾ */
+/* ï¿½×´ï¿½Ë¢ï¿½Â±ï¿½Ö¾ */
 static uint8_t firstRefresh = 1;
 
 static APP_DisplayPage_t currentPage = DISPLAY_PAGE_HOME;
@@ -22,18 +26,81 @@ static APP_DisplayPage_t currentPage = DISPLAY_PAGE_HOME;
 static APP_DisplayPage_t lastPage = DISPLAY_PAGE_HOME;
 
 /**
- * @brief OLED³õÊ¼»¯
+ * @brief OLEDï¿½ï¿½Ê¼ï¿½ï¿½
  */
+//void APP_Display_Init(void)
+//{
+//    OLED_Init();
+//    HAL_Delay(100);
+
+//    OLED_Clear();
+
+//    firstRefresh = 1;
+//    currentPage = DISPLAY_PAGE_HOME;
+
+//    lastPage = DISPLAY_PAGE_HOME;
+
+//    memset(
+//        &lastSensor,
+//        0,
+//        sizeof(lastSensor)
+//    );
+
+//}
 void APP_Display_Init(void)
 {
+    USART_Printf(
+        &huart1,
+        "DISPLAY INIT 1\r\n"
+    );
+
     OLED_Init();
-    HAL_Delay(100);
+
+    USART_Printf(
+        &huart1,
+        "DISPLAY INIT 2\r\n"
+    );
 
     OLED_Clear();
 
+    OLED_ShowString(
+        0,
+        0,
+        "OLED TEST"
+    );
+
+    OLED_ShowString(
+        0,
+        16,
+        "STM32F407"
+    );
+
+    OLED_ShowString(
+        0,
+        32,
+        "I2C1 OK"
+    );
+
+    OLED_ShowString(
+        0,
+        48,
+        "DATA TEST"
+    );
+
+    USART_Printf(
+        &huart1,
+        "OLED TEXT READY\r\n"
+    );
+
+    OLED_Refresh();
+
+    USART_Printf(
+        &huart1,
+        "OLED REFRESH FINISH\r\n"
+    );
+
     firstRefresh = 1;
     currentPage = DISPLAY_PAGE_HOME;
-
     lastPage = DISPLAY_PAGE_HOME;
 
     memset(
@@ -42,22 +109,25 @@ void APP_Display_Init(void)
         sizeof(lastSensor)
     );
 
+    USART_Printf(
+        &huart1,
+        "DISPLAY INIT 3\r\n"
+    );
 }
 
 
-
 /**
- * @brief ÅÐ¶ÏÏÔÊ¾ÄÚÈÝÊÇ·ñ·¢Éú±ä»¯
- * @retval 1 Êý¾Ý±ä»¯£¬ÐèÒªË¢ÐÂ
- *         0 Êý¾ÝÎ´±ä»¯
+ * @brief ï¿½Ð¶ï¿½ï¿½ï¿½Ê¾ï¿½ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ï¿½ï¿½ï¿½ä»¯
+ * @retval 1 ï¿½ï¿½ï¿½Ý±ä»¯ï¿½ï¿½ï¿½ï¿½ÒªË¢ï¿½ï¿½
+ *         0 ï¿½ï¿½ï¿½ï¿½Î´ï¿½ä»¯
  */
 static uint8_t APP_Display_IsChanged(void)
 {
-    const DHT11_Data_t *sensor;
+    APP_SensorData_t  sensor;
 
-    sensor = APP_Sensor_GetData();
+    APP_Sensor_GetData(&sensor);
 
-    /* µÚÒ»´ÎÒ»¶¨Ë¢ÐÂ */
+    /* ï¿½ï¿½Ò»ï¿½ï¿½Ò»ï¿½ï¿½Ë¢ï¿½ï¿½ */
     if(firstRefresh)
     {
         return 1;
@@ -68,12 +138,12 @@ static uint8_t APP_Display_IsChanged(void)
         return 1;
     }
 
-    if(sensor->temperature != lastSensor.temperature)
+    if(sensor.temperature != lastSensor.temperature)
     {
         return 1;
     }
 
-    if(sensor->humidity != lastSensor.humidity)
+    if(sensor.humidity != lastSensor.humidity)
     {
         return 1;
     }
@@ -87,15 +157,15 @@ static uint8_t APP_Display_IsChanged(void)
 }
 
 /**
- * @brief ±£´æµ±Ç°ÏÔÊ¾×´Ì¬
+ * @brief ï¿½ï¿½ï¿½æµ±Ç°ï¿½ï¿½Ê¾×´Ì¬
  */
 static void APP_Display_SaveState(void)
 {
-    const DHT11_Data_t *sensor;
+    APP_SensorData_t  sensor;
 
-    sensor = APP_Sensor_GetData();
+    APP_Sensor_GetData(&sensor);
 
-    lastSensor = *sensor;
+    lastSensor = sensor;
 
     lastLedState = APP_Control_GetLEDState();
 
@@ -111,15 +181,15 @@ static void APP_Display_ShowHomePage(void)
 //        &huart1,
 //        "Show Home Page\r\n"
 //    );
-		const DHT11_Data_t *sensor;
-		sensor = APP_Sensor_GetData();
+		APP_SensorData_t  sensor;
+		APP_Sensor_GetData(&sensor);
 	
 		OLED_ShowString(0, 0, "Smart Home");
     if(APP_System_IsSensorReady())
     {
-        OLED_Printf(0,16,"Temp:%d.%d C",sensor->temperature,sensor->temperature_dec);
+        OLED_Printf(0,16,"Temp:%.1f C",sensor.temperature);
 
-        OLED_Printf(0,32,"Humi:%d.%d %%",sensor->humidity,sensor->humidity_dec);
+        OLED_Printf(0,32,"Humi:%.1f %%",sensor.humidity);
     }
     else
     {
@@ -141,24 +211,24 @@ static void APP_Display_ShowHomePage(void)
 
 static void APP_Display_ShowSensorPage(void)
 {
-    const DHT11_Data_t *sensor;
+    APP_SensorData_t sensor;
 
-    sensor = APP_Sensor_GetData();
+    APP_Sensor_GetData(&sensor);
 
 
     OLED_ShowString(0, 0, "Sensor");
 
     OLED_Printf(0,
                 16,
-                "Temp: %d.%d C",
-                sensor->temperature,
-                sensor->temperature_dec);
+                "Temp: %.1f C",
+                sensor.temperature
+                );
 
     OLED_Printf(0,
                 32,
-                "Humi: %d.%d %%",
-                sensor->humidity,
-                sensor->humidity_dec);
+                "Humi: %.1f  %%",
+                sensor.humidity
+                );
 
 }
 
@@ -214,24 +284,29 @@ static void APP_Display_ShowDebugPage(void)
 void APP_Display_Update(void)
 {
     uint8_t changed;
+    if (oledMutex == NULL)
+    {
+        return;
+    }
 
+    if (xSemaphoreTake(oledMutex, portMAX_DELAY) != pdTRUE)
+    {
+        return;
+    }
+
+    USART_Printf(
+        &huart1,
+        "DISPLAY MUTEX TAKE OK\r\n"
+    );
+   
     changed = APP_Display_IsChanged();
-
-//    USART_Printf(
-//        &huart1,
-//        "Display Changed=%d\r\n",
-//        changed
-//    );
 
     if(changed == 0)
     {
         return;
     }
 
-//    USART_Printf(
-//        &huart1,
-//        "OLED Refresh Start\r\n"
-//    );
+
     OLED_Clear();
 
     switch(currentPage)
@@ -254,11 +329,6 @@ void APP_Display_Update(void)
 
             break;
 
-        //case DISPLAY_PAGE_CONFIG:
-
-         //   APP_Display_ShowConfigPage();
-
-        //    break;
 
         case DISPLAY_PAGE_DEBUG:
 
@@ -276,6 +346,13 @@ void APP_Display_Update(void)
 
 
     APP_Display_SaveState();
+   
+    USART_Printf(
+        &huart1,
+        "DISPLAY MUTEX GIVE\r\n"
+    );
+
+    xSemaphoreGive(oledMutex);
 }
 
 void APP_Display_SetPage(APP_DisplayPage_t page)
