@@ -7,7 +7,10 @@
  */
 
 #include "app_timer.h"
+#include "app_freertos.h"
 
+#include "usart.h"
+#include "usart_driver.h"
 #include <string.h>
 #include "stm32f4xx_hal.h"
 
@@ -31,11 +34,18 @@ static APP_Timer_t timerTable[APP_TIMER_MAX];
 /*----------------------------------------------------------
  * 静态函数声明
  *---------------------------------------------------------*/
-
+static void APP_Timer_SensorCallback(void);
 
 /*----------------------------------------------------------
  * 对外接口
  *---------------------------------------------------------*/
+uint8_t APP_Timer_Create(
+    APP_TimerId_t id,
+    uint32_t interval,
+    APP_TimerMode_t mode,
+    void (*callback)(void));
+
+
 
 /**
  * @brief 初始化软件定时器模块
@@ -49,19 +59,47 @@ void APP_Timer_Init(void)
 {
     /*
      * 清空定时器表
-     *
-     * 包括：
-     * enable
-     * mode
-     * interval
-     * lastTick
-     * callback
      */
     memset(
         timerTable,
         0,
         sizeof(timerTable)
     );
+
+    /*
+     * 创建传感器周期 Timer
+     *
+     * 注意：
+     * 此处只创建，不启动。
+     *
+     * sensorTriggerQueue 需要等
+     * APP_FreeRTOS_Init() 创建完成后，
+     * 才可以让 Timer 开始工作。
+     */
+    APP_Timer_Create(
+        APP_TIMER_SENSOR,
+        3000,
+        APP_TIMER_MODE_PERIODIC,
+        APP_Timer_SensorCallback
+    );
+}
+
+static void APP_Timer_SensorCallback(void)
+{
+    if(APP_Sensor_Trigger())
+    {
+        USART_Printf(
+            &huart1,
+            "SENSOR TRIGGER\r\n"
+        );
+    }
+    else
+    {
+        USART_Printf(
+            &huart1,
+            "SENSOR TRIGGER FAILED\r\n"
+        );
+    }
 }
 
 /**
@@ -269,7 +307,7 @@ uint8_t APP_Timer_SetInterval(
 /**
  * @brief 软件定时器处理函数
  *
- * 在主循环中周期调用，
+ * 
  * 检查所有运行中的Timer是否到期。
  *
  * @return 无

@@ -8,7 +8,14 @@ extern "C" {
 #endif
 extern SemaphoreHandle_t oledMutex;
 extern SemaphoreHandle_t sensorDataMutex;
+
+
 void APP_FreeRTOS_Init(void);
+
+void APP_ConfigTaskNotify(void);
+
+
+uint8_t APP_Sensor_Trigger(void);
 
 #ifdef __cplusplus
 }

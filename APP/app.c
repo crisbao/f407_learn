@@ -1,6 +1,7 @@
 #include "app.h"
 #include "usart.h"
 #include "usart_driver.h"
+#include "flash_test.h"
 #include "delay.h"
 
 #include "app_sensor.h"
@@ -13,35 +14,21 @@
 #include "app_event_handle.h"
 #include "app_timer.h"
 
-static void APP_Timer_TestCallback(void)
-{
-    USART_Printf(
-        &huart1,
-        "TIMER CALLBACK\r\n"
-    );
-}
 /*----------------------------------------------------------
- * APP³õÊ¼»¯
+ * APPï¿½ï¿½Ê¼ï¿½ï¿½
  *---------------------------------------------------------*/
 void APP_Init(void)
 {
-    /* ³õÊ¼»¯Ó¦ÓÃÄ£¿é */
+    /* ï¿½ï¿½Ê¼ï¿½ï¿½Ó¦ï¿½ï¿½Ä£ï¿½ï¿½ */
 	
 		APP_Event_Init();
 	
 		APP_Timer_Init();
-APP_Timer_Create(
-    APP_TIMER_SENSOR,
-    3000,
-    APP_TIMER_MODE_PERIODIC,
-    APP_Timer_TestCallback
-);
 
-APP_Timer_Start(
-    APP_TIMER_SENSOR
-);
 		APP_System_Init();
-
+		
+		FLASH_Test_Run();
+	
 		APP_Config_Init();
 	
     
@@ -51,7 +38,7 @@ APP_Timer_Start(
 
     APP_Display_Init();
     /*
-     * ÉÏµçÊÂ¼þ
+     * ï¿½Ïµï¿½ï¿½Â¼ï¿½
      */	
     APP_Event_t event;
 
@@ -68,7 +55,7 @@ APP_Timer_Start(
 
 
 /*----------------------------------------------------------
- * APPÖ÷Ñ­»·
+ * APPï¿½ï¿½Ñ­ï¿½ï¿½
  *---------------------------------------------------------*/
 void APP_Run(void)
 {
@@ -76,19 +63,19 @@ void APP_Run(void)
 		APP_Timer_Process();
 	
 		/*
-     * ´¦ÀíÊÂ¼þ
+     * ï¿½ï¿½ï¿½ï¿½ï¿½Â¼ï¿½
      */
     APP_Event_Process();
 
 
     /*
-     * FlashºóÌ¨Î¬»¤
+     * Flashï¿½ï¿½Ì¨Î¬ï¿½ï¿½
      */
     APP_Config_Process();
 
 
     /*
-     * À¶ÑÀÃüÁî
+     * ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
      */
     APP_Protocol_Process();
 

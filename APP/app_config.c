@@ -2,6 +2,7 @@
 #include "app_status.h"
 #include "app_system.h"
 #include "app_event.h"
+#include "app_freertos.h"
 #include "usart_driver.h"
 #include "usart.h"
 #include "flash.h"
@@ -37,7 +38,7 @@ static uint32_t APP_Config_CRC32(const uint8_t *data,uint32_t length);
 static uint8_t APP_Config_Check(APP_ConfigData_t *config);
 static uint32_t APP_Config_GetNextSequence(void);
 static APP_ConfigTarget_t APP_Config_GetWriteTarget(void);
-static APP_ConfigStatus_t APP_Config_Repair(void);
+APP_ConfigStatus_t APP_Config_Repair(void);
 uint8_t APP_Config_IsDirty(void);
 
 
@@ -187,14 +188,7 @@ APP_ConfigStatus_t APP_Config_Load(void)
         &storageB
     );
 
-//    USART_Printf(
-//            &huart1,
-//            "validA=%d validB=%d seqA=%lu seqB=%lu\r\n",
-//            validA,
-//            validB,
-//            storageA.sequence,
-//            storageB.sequence
-//        );
+
     /*
      * 两个都有效
      */
@@ -301,7 +295,7 @@ APP_ConfigStatus_t APP_Config_Load(void)
         sizeof(APP_ConfigData_t)
     );
 
-    configRepairPending = APP_CONFIG_INITIAL_SEQUENCE;
+    configRepairPending = APP_CONFIG_REPAIR_PENDING;
 
     configRepairTarget = APP_CONFIG_REPAIR_TO_A;
 
@@ -407,11 +401,16 @@ APP_ConfigStatus_t APP_Config_Save(void)
 /**
  * @brief 设置传感器采样周期
  */
-void APP_Config_SetSensorInterval(uint32_t ms)
+uint32_t APP_Config_SetSensorInterval(uint32_t ms)
 {
-    if(ms < 500)
+    if(ms < APP_CONFIG_MIN_INTERVAL_MS)
     {
-        ms = 500;
+        ms = APP_CONFIG_MIN_INTERVAL_MS;
+    }
+
+    if(ms > APP_CONFIG_MAX_INTERVAL_MS)
+    {
+        ms = APP_CONFIG_MAX_INTERVAL_MS;
     }
 
     if(appConfig.sensorIntervalMs != ms)
@@ -421,7 +420,10 @@ void APP_Config_SetSensorInterval(uint32_t ms)
         configDirty = 1;
 
         configDirtyTick = HAL_GetTick();
-
+        /*
+        * 唤醒 ConfigTask
+        */
+        APP_ConfigTaskNotify();
         /*
          * 发送配置变化事件
          */
@@ -436,14 +438,15 @@ void APP_Config_SetSensorInterval(uint32_t ms)
         event.param =
             ms;
         USART_Printf(
-    &huart1,
-    "Post Config Event interval=%lu\r\n",
-    ms
-);
+            &huart1,
+            "Post Config Event interval=%lu\r\n",
+            ms
+        );
         APP_Event_Post(
             &event
         );
     }
+    return ms;
 }
 
 
@@ -525,6 +528,11 @@ static uint8_t APP_Config_Check(
 uint8_t APP_Config_IsDirty(void)
 {
     return configDirty;
+}
+
+uint8_t APP_Config_IsRepairPending(void)
+{
+    return configRepairPending;
 }
 
 static uint32_t APP_Config_GetNextSequence(void)
@@ -701,7 +709,7 @@ static APP_ConfigTarget_t APP_Config_GetWriteTarget(void)
 
 }
 
-static APP_ConfigStatus_t APP_Config_Repair(void)
+APP_ConfigStatus_t APP_Config_Repair(void)
 {
     uint32_t address;
     uint32_t sector;
@@ -759,7 +767,7 @@ static APP_ConfigStatus_t APP_Config_Repair(void)
     /*
      * 修复完成
      */
-    configRepairPending = 0;
+    configRepairPending = APP_CONFIG_REPAIR_NONE;
 
     configRepairTarget = APP_CONFIG_REPAIR_NONE;
     USART_Printf(
@@ -927,5 +935,24 @@ void APP_Config_PrintInfo(void)
         "============================\r\n"
     );
 
+}
+
+uint32_t APP_Config_GetSaveRemainingTime(void)
+{
+    uint32_t elapsed;
+
+    if(!configDirty)
+    {
+        return 0;
+    }
+
+    elapsed = HAL_GetTick() - configDirtyTick;
+
+    if(elapsed >= APP_CONFIG_SAVE_DELAY_MS)
+    {
+        return 0;
+    }
+
+    return APP_CONFIG_SAVE_DELAY_MS - elapsed;
 }
 

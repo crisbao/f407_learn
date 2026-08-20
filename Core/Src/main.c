@@ -109,9 +109,9 @@ int main(void)
 
 //  vTaskStartScheduler();
 	Delay_Init();
-
+  
     USART_Printf(&huart1, "MAIN 1\r\n");
-
+  
     APP_Init();
 
     USART_Printf(&huart1, "MAIN 2\r\n");

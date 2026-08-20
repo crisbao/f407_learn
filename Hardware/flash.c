@@ -1,6 +1,9 @@
 #include "flash.h"
+#include "usart_driver.h"
 #include <string.h>
 
+
+extern UART_HandleTypeDef huart1;
 /**
  * @brief ²Á³ýÖ¸¶¨Flash Sector
  *
@@ -137,4 +140,8 @@ uint32_t length)
     );
 
 }
+
+
+
+
 

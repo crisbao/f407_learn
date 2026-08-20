@@ -895,6 +895,11 @@
               <FileType>1</FileType>
               <FilePath>..\Hardware\flash.c</FilePath>
             </File>
+            <File>
+              <FileName>flash_test.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\APP\flash_test.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

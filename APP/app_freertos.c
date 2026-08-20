@@ -24,12 +24,14 @@ extern UART_HandleTypeDef huart1;
 
 SemaphoreHandle_t oledMutex = NULL;
 SemaphoreHandle_t sensorDataMutex = NULL;
-//static QueueHandle_t testQueue;
-//static QueueHandle_t appEventQueue;
-//static volatile uint32_t queueRecvCount = 0;
-//static volatile uint32_t queueRecvValue = 0;
+
+static TaskHandle_t configTaskHandle;
+
+
 static QueueHandle_t sensorTriggerQueue;
 static void APP_RTOS_EventHandle(const APP_Event_t *event);
+
+uint8_t APP_Sensor_Trigger(void);
 
 /**
  * @brief FreeRTOS主任务
@@ -46,66 +48,47 @@ static void APP_MainTask(void *argument)
         &huart1,
         "MAIN TASK\r\n"
     );
-        //APP_Timer_Process();
 
-
-        APP_Config_Process();
-
-//        USART_Printf(
-//            &huart1,
-//            "RecvCount=%lu RecvValue=%lu\r\n",
-//            queueRecvCount,
-//            queueRecvValue
-//        );
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
 
 /**
- * @brief  FreeRTOS传感器任务
+ * @brief FreeRTOS 传感器任务
  *
- * @note   周期执行传感器采集。
- *         采样周期由APP_Config动态提供。
+ * @note
+ *       等待 Sensor Trigger Queue。
+ *       收到触发后执行一次传感器采集。
  */
 static void APP_SensorTask(void *argument)
 {
+    uint8_t trigger;
+
     (void)argument;
 
-    /* 记录任务上一次唤醒时间 */
-    TickType_t lastWakeTime;
-
-    /* 获取当前Tick作为周期计算基准 */
-    lastWakeTime = xTaskGetTickCount();
-
-    /* 任务永久运行 */
     for (;;)
     {
-			USART_Printf(
-            &huart1,
-            "SENSOR TASK\r\n"
-        );
-			 
         /*
-         * 执行一次传感器采集。
-         */
-        APP_Sensor_Update();
-
-        /*
-         * 获取当前传感器采样周期。
+         * 等待传感器触发
          *
-         * 配置单位为ms，
-         * 转换为FreeRTOS Tick后使用。
+         * 没有触发时，任务阻塞。
          */
-        TickType_t sensorPeriod =
-            pdMS_TO_TICKS(APP_Config_GetSensorInterval());
+        if(xQueueReceive(
+                sensorTriggerQueue,
+                &trigger,
+                portMAX_DELAY
+            ) == pdTRUE)
+        {
+            USART_Printf(
+                &huart1,
+                "SENSOR TASK\r\n"
+            );
 
-        /*
-         * 按固定时间基准等待下一次采集。
-         */
-        vTaskDelayUntil(
-            &lastWakeTime,
-            sensorPeriod
-        );
+            /*
+             * 执行一次传感器采集
+             */
+            APP_Sensor_Update();
+        }
     }
 }
 
@@ -124,11 +107,145 @@ static void APP_ProtocolTask(void *argument)
     }
 }
 
+static void APP_ConfigTask(void *argument)
+{
+    uint32_t remaining;
+    uint32_t notifyResult;
+
+    for(;;)
+    {
+        /*
+         * 等待配置任务通知
+         *
+         * 通知来源：
+         * 1. 配置发生变化
+         * 2. 系统启动时发现需要 Repair
+         */
+        notifyResult =
+            ulTaskNotifyTake(
+                pdTRUE,
+                portMAX_DELAY
+            );
+
+        if(notifyResult > 0)
+        {
+            USART_Printf(
+                &huart1,
+                "CONFIG TASK\r\n"
+            );
+        }
+
+
+        /*
+         * ========================================
+         * 第一优先级：处理 Repair
+         * ========================================
+         */
+        if(APP_Config_IsRepairPending())
+        {
+            APP_ConfigStatus_t status;
+
+            USART_Printf(
+                &huart1,
+                "CONFIG REPAIR PENDING\r\n"
+            );
+
+            status = APP_Config_Repair();
+
+            if(status != APP_CONFIG_OK)
+            {
+                USART_Printf(
+                    &huart1,
+                    "CONFIG REPAIR FAILED status=%d\r\n",
+                    status
+                );
+
+                /*
+                 * Repair失败：
+                 * 等待一段时间后重新尝试。
+                 */
+                vTaskDelay(
+                    pdMS_TO_TICKS(
+                        APP_CONFIG_REPAIR_RETRY_DELAY_MS
+                    )
+                );
+
+                /*
+                 * 不处理Dirty，
+                 * 重新进入本轮循环，
+                 * 再次检查RepairPending。
+                 */
+                continue;
+            }
+
+            USART_Printf(
+                &huart1,
+                "CONFIG REPAIR DONE\r\n"
+            );
+        }
+
+
+        /*
+         * ========================================
+         * 第二优先级：处理 Dirty Save
+         * ========================================
+         */
+        while(APP_Config_IsDirty())
+        {
+            remaining =
+                APP_Config_GetSaveRemainingTime();
+
+
+            /*
+             * 已经到保存时间
+             */
+            if(remaining == 0)
+            {
+                APP_Config_Process();
+
+                break;
+            }
+
+
+            /*
+             * 阻塞等待：
+             *
+             * 1. 新配置通知
+             * 2. 保存时间到期
+             */
+            notifyResult =
+                ulTaskNotifyTake(
+                    pdTRUE,
+                    pdMS_TO_TICKS(remaining)
+                );
+
+
+            /*
+             * 收到新的配置通知
+             *
+             * 不立即保存，
+             * 重新计算剩余时间。
+             */
+            if(notifyResult > 0)
+            {
+                continue;
+            }
+
+
+            /*
+             * timeout：
+             * 保存时间到了
+             */
+            APP_Config_Process();
+        }
+    }
+}
+
 static void APP_EventTask(void *argument)
 {
     (void)argument;
     APP_Event_t event;
-
+    
 
     for (;;)
     {
@@ -152,13 +269,20 @@ static void APP_EventTask(void *argument)
 
 static void APP_TimerTask(void *argument)
 {
+    TickType_t lastWakeTime;
+
     (void)argument;
+
+    lastWakeTime = xTaskGetTickCount();
 
     for (;;)
     {
         APP_Timer_Process();
 
-        vTaskDelay(pdMS_TO_TICKS(10));
+        vTaskDelayUntil(
+            &lastWakeTime,
+            pdMS_TO_TICKS(10)
+        );
     }
 }
 
@@ -168,113 +292,7 @@ static void APP_TimerTask(void *argument)
  *
  * 创建应用层主任务。
  */
-//void APP_FreeRTOS_Init(void)
-//{
-//    BaseType_t retSend;
-//    BaseType_t retRecv;
-//    /*
-//     * 初始化FreeRTOS事件队列
-//     */
-//    APP_Event_Init();
 
-////    testQueue = xQueueCreate(
-////                                8,
-////                                sizeof(APP_TestMessage_t)
-////                            );
-////        if(testQueue == NULL)
-////    {
-////        USART_Printf(
-////            &huart1,
-////            "testQueue create FAILED\r\n"
-////        );
-////    }
-////    else
-////    {
-////        USART_Printf(
-////            &huart1,
-////            "testQueue create OK\r\n"
-////        );
-////    }
-
-//    xTaskCreate(
-//        APP_MainTask,
-//        "APP_Main",
-//        512,
-//        NULL,
-//        2,
-//        NULL
-//    );
-//    /*
-//     * 创建传感器任务。
-//     *
-//     * 参数：
-//     * 任务函数、任务名称、栈大小、任务参数、
-//     * 任务优先级、任务句柄。
-//     */
-//    xTaskCreate(
-//        APP_SensorTask,
-//        "Sensor",
-//        256,
-//        NULL,
-//        1,
-//        NULL
-//    );
-//    xTaskCreate(
-//        APP_DisplayTask,
-//        "Display",
-//        512,
-//        NULL,
-//        1,
-//        NULL
-//    );
-//    xTaskCreate(
-//        APP_ProtocolTask,
-//        "Protocol",
-//        512,
-//        NULL,
-//        2,
-//        NULL
-//    );
-//    xTaskCreate(
-//        APP_EventTask,
-//        "EventTask",
-//        512,
-//        NULL,
-//        2,
-//        NULL
-//    );
-//    retSend = xTaskCreate(
-//        APP_QueueSendTask,
-//        "QueueSend",
-//        256,
-//        NULL,
-//        1,
-//        NULL
-//    );
-
-//    retRecv = xTaskCreate(
-//        APP_QueueReceiveTask,
-//        "QueueRecv",
-//        256,
-//        NULL,
-//        1,
-//        NULL
-//    );
-//    USART_Printf(
-//        &huart1,
-//        "QueueSend create=%ld\r\n",
-//        (long)retSend
-//    );
-
-//    USART_Printf(
-//        &huart1,
-//        "QueueRecv create=%ld\r\n",
-//        (long)retRecv
-//    );
-//}
-/**
- * @brief FreeRTOS应用初始化
- */
 void APP_FreeRTOS_Init(void)
 {
     BaseType_t ret;
@@ -420,7 +438,38 @@ void APP_FreeRTOS_Init(void)
         "Event create=%ld\r\n",
         (long)ret
     );
+    
+    ret = xTaskCreate(
+    APP_ConfigTask,
+    "Config",
+    256,
+    NULL,
+    1,
+    &configTaskHandle
+    );
 
+    USART_Printf(
+        &huart1,
+        "Config create=%d\r\n",
+        ret
+    );
+    if(ret == pdPASS)
+    {
+        if(APP_Config_IsRepairPending())
+        {
+            APP_ConfigTaskNotify();
+        }
+    }
+    /* 启动 Sensor Timer */
+    if(sensorTriggerQueue != NULL)
+    {
+        APP_Timer_Start(APP_TIMER_SENSOR);
+
+        USART_Printf(
+            &huart1,
+            "Sensor Timer START\r\n"
+        );
+    }
 
     USART_Printf(
         &huart1,
@@ -515,6 +564,60 @@ static void APP_RTOS_EventHandle(const APP_Event_t *event)
 
             break;
     }
+}
+
+void APP_ConfigTaskNotify(void)
+{
+    USART_Printf(
+        &huart1,
+        "CONFIG NOTIFY\r\n"
+    );
+
+    if(configTaskHandle == NULL)
+    {
+        USART_Printf(
+            &huart1,
+            "CONFIG HANDLE NULL\r\n"
+        );
+        return;
+    }
+
+    BaseType_t ret;
+
+    ret = xTaskNotifyGive(configTaskHandle);
+
+    USART_Printf(
+        &huart1,
+        "CONFIG NOTIFY GIVE ret=%ld\r\n",
+        ret
+    );
+}
+
+/**
+ * @brief 触发一次传感器采样
+ *
+ * @return 1：发送成功
+ *         0：发送失败
+ */
+uint8_t APP_Sensor_Trigger(void)
+{
+    uint8_t trigger = 1;
+
+    if(sensorTriggerQueue == NULL)
+    {
+        return 0;
+    }
+
+    if(xQueueSend(
+            sensorTriggerQueue,
+            &trigger,
+            0
+        ) == pdTRUE)
+    {
+        return 1;
+    }
+
+    return 0;
 }
 
 /**

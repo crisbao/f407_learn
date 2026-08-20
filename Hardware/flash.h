@@ -19,7 +19,7 @@
 #define FLASH_CONFIG_ADDRESS_A 0x08040000U
 
 #define FLASH_CONFIG_ADDRESS_B 0x08060000U
-#define FLASH_CONFIG_SECTOR FLASH_SECTOR_7
+
 
 typedef enum
 {
@@ -43,12 +43,11 @@ FLASH_Status_t FLASH_Write(
 
 
 /**
- * @brief Flash¶ÁÈ¡Êý¾Ý
+ * @brief Flashï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½
  */
 void FLASH_Read(uint32_t address,
                 uint8_t *data,
                 uint32_t length);
-
 
 
 #endif

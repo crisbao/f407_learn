@@ -164,7 +164,7 @@ static void APP_Cmd_Page(char *param)
 static void APP_Cmd_SetInterval(char *param)
 {
     uint32_t sec;
-
+    uint32_t actualMs;
     if(param == NULL)
     {
         HC05_Printf("ERR PARAM\r\n");
@@ -179,17 +179,18 @@ static void APP_Cmd_SetInterval(char *param)
         return;
     }
 
+    actualMs = APP_Config_SetSensorInterval(sec * 1000);
     APP_Config_SetSensorInterval(sec * 1000);
 
     HC05_Printf(
         "INTERVAL=%lu s SET\r\n",
-        sec
+        actualMs/1000
     );
 
     USART_Printf(
         &huart1,
         "Interval changed = %lu ms\r\n",
-        sec * 1000
+        actualMs
     );
 }
 
